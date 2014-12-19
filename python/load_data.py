@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-%matplotlib inline
+#%matplotlib inline
 import numpy as np
 import os
 import sys
@@ -7,8 +7,8 @@ import struct
 from scipy import misc
 from mayavi import mlab
 
-def main()
-
+def main():
+    print("Hello World")
 
     return 1
 
