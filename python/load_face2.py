@@ -46,55 +46,16 @@ scene = bpy.context.scene
 scene.objects.link(obj)    
 #we select the object, we want to work with objects over meshes. that be the idea
 obj.select = True    
-
-#Experimenting with trying to set active object, seems more or less useless or a duplicate of the previous statements
-for object in bpy.data.objects:
-    if object.name != 'Lamp' and object.name !='Camera':
-        object.select = True
-        bpy.context.scene.objects.active = object
-
 objs = [l for l in bpy.data.objects]
 print(objs)
 print(bpy.context.selected_objects)
-
 myObj = bpy.context.selected_objects[0]
 print(myObj)
-#Got this from the blender bpy documentation on how to override the context
-#The idea is some operations require an explicit description of context while others dont
-#Apparently we can know more by looking at what the operation polls()
-#Unable to fix this at this point in time
-'''
-for window in bpy.context.window_manager.windows:
-    screen = window.screen
-    print(screen.name)
-    for area in screen.areas:
-        print(area.type)
-        if area.type == 'VIEW_3D':
-            override = {'window':window,'screen':screen, 'area':area}
-            #It crashes (segfaults) at the next statement
-            #bpy.ops.screen.screen_full_area(override)
-            break
-'''
-#Not sure what these next pair of statements do but they are important to edit object
-bpy.ops.object.mode_set(mode='OBJECT')
-#bpy.ops.object.mode_set(mode='EDIT')
 
-#bpy.ops.mesh.select_all(action='SELECT')
-
-##This works if you run it through blender player's python engine but not so when you run it through a standalone script
-##rescale
-#bpy.ops.transform.resize(value=(.025,.025,.025),constraint_axis=(False,False,False),constraint_orientation='GLOBAL',mirror=False,proportional='DISABLED',proportional_edit_falloff='SMOOTH',proportional_size=1)
 myObj.scale = ((0.1,0.1,0.1))
-
-#trying a less dense command in the hope that the defaults will cut it for us
-#bpy.ops.transform.resize(value=(.025,.025,.025))
-
-#This fails
-#bpy.data.objects["My_Object"].resize = (.025,.025,.025)
 
 ##This works if you run it through blender player's python engine but not so when you run it through a standalone script
 #translate
-#bpy.ops.transform.translate(value=(-5.0,-5.0,0.0),constraint_axis=(False,False,False),constraint_orientation='GLOBAL',mirror=False,proportional='DISABLED',proportional_edit_falloff='SMOOTH',proportional_size=1)
 bpy.data.objects["My_Object"].location=(-5.0,-5.0,0.0)
 
 #camera
