@@ -5,6 +5,7 @@ import numpy as np
 sys.path.append('//home/mudigonda/blender-git/build_opencolorio/bin/')
 import bpy
 from math import radians
+import random
 
 jubf234=scio.loadmat('/media/mudigonda/Gondor/Projects/shape-basis-3d/matlab/JUBF234.mat')
 faces=jubf234['faces']
@@ -34,7 +35,28 @@ for ii in range(faces.shape[0]):
 
 #This lets us create our own mesh of an object
 mesh_3d.from_pydata(vertex, [], face)  
-#We update the scene, which is like clicking render?
+#We update the scene
+mesh_3d.update()
+
+
+#We take the vertex colors
+vertex_colors = mesh_3d.vertex_colors
+
+if len(vertex_colors)==0:
+    vertex_colors.new()
+
+color_layer = vertex_colors['Col']
+i = 0
+for poly in mesh_3d.polygons:
+    for idx in poly.loop_indices:
+        rgb = [random.random() for i in range(3)]
+        color_layer.data[i].color = rgb
+        i += 1
+
+mat = bpy.data.materials.new('vertex_material')
+mat.use_vertex_color_paint = True
+mat.use_vertex_color_light = True
+mesh_3d.materials.append(mat)
 mesh_3d.update()
 
 #creating a new object to link the object
@@ -59,49 +81,23 @@ print(bpy.context.selected_objects)
 
 myObj = bpy.context.selected_objects[0]
 print(myObj)
-#Got this from the blender bpy documentation on how to override the context
-#The idea is some operations require an explicit description of context while others dont
-#Apparently we can know more by looking at what the operation polls()
-#Unable to fix this at this point in time
-'''
-for window in bpy.context.window_manager.windows:
-    screen = window.screen
-    print(screen.name)
-    for area in screen.areas:
-        print(area.type)
-        if area.type == 'VIEW_3D':
-            override = {'window':window,'screen':screen, 'area':area}
-            #It crashes (segfaults) at the next statement
-            #bpy.ops.screen.screen_full_area(override)
-            break
-'''
 #Not sure what these next pair of statements do but they are important to edit object
 bpy.ops.object.mode_set(mode='OBJECT')
 #bpy.ops.object.mode_set(mode='EDIT')
-
 #bpy.ops.mesh.select_all(action='SELECT')
 
-##This works if you run it through blender player's python engine but not so when you run it through a standalone script
-##rescale
-#bpy.ops.transform.resize(value=(.025,.025,.025),constraint_axis=(False,False,False),constraint_orientation='GLOBAL',mirror=False,proportional='DISABLED',proportional_edit_falloff='SMOOTH',proportional_size=1)
-myObj.scale = ((0.1,0.1,0.1))
-
-#trying a less dense command in the hope that the defaults will cut it for us
-#bpy.ops.transform.resize(value=(.025,.025,.025))
-
-#This fails
-#bpy.data.objects["My_Object"].resize = (.025,.025,.025)
-
-##This works if you run it through blender player's python engine but not so when you run it through a standalone script
-#translate
-#bpy.ops.transform.translate(value=(-5.0,-5.0,0.0),constraint_axis=(False,False,False),constraint_orientation='GLOBAL',mirror=False,proportional='DISABLED',proportional_edit_falloff='SMOOTH',proportional_size=1)
+#Resize
+myObj.scale = ((0.025,0.025,0.025))
+#Translate
 bpy.data.objects["My_Object"].location=(-5.0,-5.0,0.0)
 
 #camera
-#This works, since we used it previously
-bpy.data.objects['Camera'].location = (0.0,5.0,5.0)
-bpy.data.objects['Camera'].rotation_euler = (radians(90),0.0,0.0)
+#Location
+bpy.data.objects['Camera'].location = (0.0,1.0,7.0)
+#Rotation
+bpy.data.objects['Camera'].rotation_euler = (radians(0.0),radians(0.0),radians(180.0))
 fov=150
+#FOV
 scene.camera.data.angle = fov*(np.pi/180.0)
 
 #Rendering file
