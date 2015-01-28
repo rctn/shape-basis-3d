@@ -10,6 +10,7 @@ import random
 jubf234=scio.loadmat('/media/mudigonda/Gondor/Projects/shape-basis-3d/matlab/JUBF234.mat')
 faces=jubf234['faces']
 vertices=jubf234['vertices']
+texture=jubf234['texture']
 
 for object in bpy.data.objects:
     if object.name != 'Lamp' and object.name !='Camera':
@@ -24,6 +25,7 @@ bpy.ops.object.delete()
 mesh_3d= bpy.data.meshes.new("Human_Face")
 
 #converting stuff to int and making a list out of a numpy array...fuuuuuck
+#Remember that these are matlab indices, somethign to worry about
 vertex=[]
 for ii in range(vertices.shape[0]):
     vertex.append((float(vertices[ii,0]),float(vertices[ii,1]),float(vertices[ii,2])))
@@ -31,7 +33,7 @@ for ii in range(vertices.shape[0]):
 #converting more stuff to int, same thing except here out of face data where face == triangles
 face=[]
 for ii in range(faces.shape[0]):
-   face.append((int(faces[ii,0])-1,int(faces[ii,1])-1,int(faces[ii,2])-1))
+   face.append((int(faces[ii,0]),int(faces[ii,1]),int(faces[ii,2])))
 
 #This lets us create our own mesh of an object
 mesh_3d.from_pydata(vertex, [], face)  
@@ -47,11 +49,18 @@ if len(vertex_colors)==0:
 
 color_layer = vertex_colors['Col']
 i = 0
+print("Counting nonzero Texture elements")
+print(np.count_nonzero(texture))
 for poly in mesh_3d.polygons:
     for idx in poly.loop_indices:
         rgb = [random.random() for i in range(3)]
+#        color_layer.data[i].color = rgb
+#        if i<262144:
         color_layer.data[i].color = rgb
+#            color_layer.data[i].color = texture[i,:]/255.0
+#        else:
         i += 1
+#            print(i)
 
 mat = bpy.data.materials.new('vertex_material')
 mat.use_vertex_color_paint = True
@@ -86,16 +95,22 @@ bpy.ops.object.mode_set(mode='OBJECT')
 #bpy.ops.object.mode_set(mode='EDIT')
 #bpy.ops.mesh.select_all(action='SELECT')
 
-#Resize
-myObj.scale = ((0.025,0.025,0.025))
-#Translate
-bpy.data.objects["My_Object"].location=(-5.0,-5.0,0.0)
+##Resize
+#myObj.scale = ((0.025,0.025,0.025))
+myObj.scale = ((0.05,0.05,0.05))
+##Translate
+bpy.data.objects["My_Object"].location=(0.0,0.0,0.0)
 
-#camera
-#Location
-bpy.data.objects['Camera'].location = (0.0,1.0,7.0)
+##camera
+##Location
+bpy.data.objects['Camera'].location = (0.0,0.0,10.0)
 #Rotation
-bpy.data.objects['Camera'].rotation_euler = (radians(0.0),radians(0.0),radians(180.0))
+bpy.data.objects['Camera'].rotation_euler = (radians(0.0),radians(0.0),radians(0.0))
+
+##Move the Lamp aka Light
+bpy.data.objects["Lamp"].location = (0.0,0.0,15.0)
+
+
 fov=150
 #FOV
 scene.camera.data.angle = fov*(np.pi/180.0)
