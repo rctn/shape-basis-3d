@@ -3,6 +3,13 @@ sys.path.append('/home/mudigonda/blender-git/build_opencolorio/bin')
 import bpy
 import random
 import numpy as np
+import scipy.io as scio
+
+
+jubf234=scio.loadmat('/media/mudigonda/Gondor/Projects/shape-basis-3d/matlab/JUBF234.mat')
+faces=jubf234['faces']
+vertices=jubf234['vertices']
+texture=jubf234['texture']
 
 # start in object mode
 for object in bpy.data.objects:
@@ -39,11 +46,19 @@ color_layer = vertex_colors['Col']
 # color_layer = mesh.vertex_colors.active  
 
 i = 0
+color_nonzero = np.nonzero(texture)
+
 for poly in mesh.polygons:
     for idx in poly.loop_indices:
-        rgb = [random.random() for i in range(3)]
-        color_layer.data[i].color = rgb
+#        rgb = [random.random() for i in range(3)]
+#        print(rgb)
+#        color_layer.data[i].color = rgb
+        print(color_nonzero[0][i])
+        rgb = list(texture[color_nonzero[0][i],:]/255.0)
+        color_layer.data[i].color = rgb 
+        print(rgb)
         i += 1
+        print(i)
 
 mat = bpy.data.materials.new('vertex_material')
 mat.use_vertex_color_paint = True

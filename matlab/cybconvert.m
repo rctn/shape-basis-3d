@@ -1,4 +1,4 @@
-function vertices = cybconvert(image)
+function [vertices,faces] = cybconvert(image)
 
 %%  DESCRIPTION
 %
@@ -48,8 +48,38 @@ function vertices = cybconvert(image)
                 vertices(i,j,3) = z; 
                 count = count + 1;
             end
+            
         end
     end
 
+disp('Done converting format')
+%Creating the faces (polygons)
+faces=zeros((size(image,1)-1)*2,3);
+kk=1;
+for ii = 1:size(image,1)-1    
+    for jj =1:size(image,2)-1
+        %Index 1
+%         faces(kk,1)= sub2ind([height,width],ii,jj);
+        faces(kk,1)= sub2ind([height,width],jj,ii);
+        %Index 2
+%         faces(kk,2)= sub2ind([height,width],ii,jj+1);        
+        faces(kk,2)= sub2ind([height,width],jj+1,ii);        
+        %Index 3       
+%         faces(kk,3)= sub2ind([height,width],ii+1,jj);
+        faces(kk,3)= sub2ind([height,width],jj,ii+1);
+        kk=kk+1;
+        %Index 1
+%         faces(kk,1)= sub2ind([height,width],ii+1,jj);
+        faces(kk,1)= sub2ind([height,width],jj,ii+1);
+        %Index 2
+%         faces(kk,2)= sub2ind([height,width],ii,jj+1);        
+        faces(kk,2)= sub2ind([height,width],jj+1,ii);        
+        %Index 3       
+%         faces(kk,3)= sub2ind([height,width],ii+1,jj+1);
+        faces(kk,3)= sub2ind([height,width],jj+1,ii+1);
+        kk=kk+1;
+    end
+end
 
 end
+
