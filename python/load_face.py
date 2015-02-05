@@ -9,7 +9,7 @@ import random
 import pdb
 
 #jubf234=scio.loadmat('/media/mudigonda/Gondor/Projects/shape-basis-3d/matlab/JUBF234.mat')
-jubf234=scio.loadmat('/media/mudigonda/Gondor/Projects/shape-basis-3d/matlab/JUHF248.mat')
+jubf234=scio.loadmat('/media/mudigonda/Gondor/Data/3dFace/matfiles/JUSM342.mat')
 faces=jubf234['faces']
 faces = faces-1
 vertices=jubf234['vertices']
@@ -59,25 +59,11 @@ color_layer = vertex_colors['Col']
 i = 0
 non_zero = np.nonzero(texture)
 
-'''
-for poly in mesh_3d.polygons:
-    for idx in poly.vertices:
-        #rgb = list(np.random.random((3,1)))
-        #rgb = [0.59215,0.36470,.2]
-        rgb = list(texture[idx,:]/255.0)
-        color_layer.data[i].color = rgb
-        i += 1
-print("The final value of i is ",i)
-'''
 
 face_flat = faces.flatten()
 for ii in range(face_flat.shape[0]):
     color_layer.data[ii].color = list(texture[face_flat[ii],:]/255.0)
 
-'''
-for ii in range(texture.shape[0]):
-    color_layer.data[ii].color = list(texture[ii,:]/255.0)
-'''
 mat = bpy.data.materials.new('vertex_material')
 mat.use_vertex_color_paint = True
 mat.use_vertex_color_light = True
@@ -97,7 +83,6 @@ print(myObj)
 bpy.ops.object.mode_set(mode='OBJECT')
 
 ##Resize
-#myObj.scale = ((0.025,0.025,0.025))
 myObj.scale = ((0.05,0.05,0.05))
 ##Translate
 bpy.data.objects["My_Object"].location=(0.0,0.0,0.0)
@@ -116,8 +101,18 @@ fov=150
 #FOV
 scene.camera.data.angle = fov*(np.pi/180.0)
 
+for item in bpy.data.materials:
+    item.use_shadless=True
+
 #Rendering file
 path = "load_face2.png" 
+bpy.types.ImageFormatSettings.color_mode='RGB'
+bpy.data.scenes['Scene'].render.filepath = path
+bpy.ops.render.render(write_still=True)
+
+#Do some rotations
+path = "load_face2_rot_30.png" 
+bpy.data.objects["My_Object"].rotation_euler =(radians(0.0),radians(30.0),0.0)
 bpy.types.ImageFormatSettings.color_mode='RGB'
 bpy.data.scenes['Scene'].render.filepath = path
 bpy.ops.render.render(write_still=True)

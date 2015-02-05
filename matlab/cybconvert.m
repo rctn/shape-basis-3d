@@ -1,4 +1,4 @@
-function [vertices,faces] = cybconvert(image)
+function [vertices] = cybconvert(image)
 
 %%  DESCRIPTION
 %
@@ -20,7 +20,8 @@ function [vertices,faces] = cybconvert(image)
     width  = size(image,2);
     vertices = zeros(height, width, 3);   
     count = 1;
-    y = (lat_incr*height)/2;    % centre face on y = 0
+%     kk=1;
+    y = (lat_incr*height)/2;    % centre face on y = 0   
     for i = 1:size(image,1)
         y = y - lat_incr;
         for j = 1:size(image,2)  
@@ -48,38 +49,42 @@ function [vertices,faces] = cybconvert(image)
                 vertices(i,j,3) = z; 
                 count = count + 1;
             end
-            
+           %%%Check that the next column vertex and row vertex exist, if so
+           %%%then triangulate, if not -- ignore
+% %            if (image(i+1,j)>0 && image(i,j+1)>0)
+% %                faces(kk,1)=sub2ind(
+% %            end
         end
     end
 
 disp('Done converting format')
 %Creating the faces (polygons)
-faces=zeros((size(image,1)-1)*2,3);
-kk=1;
-for ii = 1:size(image,1)-1    
-    for jj =1:size(image,2)-1
-        %Index 1
-%         faces(kk,1)= sub2ind([height,width],ii,jj);
-        faces(kk,1)= sub2ind([height,width],jj,ii);
-        %Index 2
-%         faces(kk,2)= sub2ind([height,width],ii,jj+1);        
-        faces(kk,2)= sub2ind([height,width],jj+1,ii);        
-        %Index 3       
-%         faces(kk,3)= sub2ind([height,width],ii+1,jj);
-        faces(kk,3)= sub2ind([height,width],jj,ii+1);
-        kk=kk+1;
-        %Index 1
-%         faces(kk,1)= sub2ind([height,width],ii+1,jj);
-        faces(kk,1)= sub2ind([height,width],jj,ii+1);
-        %Index 2
-%         faces(kk,2)= sub2ind([height,width],ii,jj+1);        
-        faces(kk,2)= sub2ind([height,width],jj+1,ii);        
-        %Index 3       
-%         faces(kk,3)= sub2ind([height,width],ii+1,jj+1);
-        faces(kk,3)= sub2ind([height,width],jj+1,ii+1);
-        kk=kk+1;
-    end
-end
+% % faces=zeros((size(image,1)-1)*2,3);
+% % kk=1;
+% % for ii = 1:size(image,1)-1    
+% %     for jj =1:size(image,2)-1
+% %         %Index 1
+% % %         faces(kk,1)= sub2ind([height,width],ii,jj);
+% %         faces(kk,1)= sub2ind([height,width],jj,ii);
+% %         %Index 2
+% % %         faces(kk,2)= sub2ind([height,width],ii,jj+1);        
+% %         faces(kk,2)= sub2ind([height,width],jj+1,ii);        
+% %         %Index 3       
+% % %         faces(kk,3)= sub2ind([height,width],ii+1,jj);
+% %         faces(kk,3)= sub2ind([height,width],jj,ii+1);
+% %         kk=kk+1;
+% %         %Index 1
+% % %         faces(kk,1)= sub2ind([height,width],ii+1,jj);
+% %         faces(kk,1)= sub2ind([height,width],jj,ii+1);
+% %         %Index 2
+% % %         faces(kk,2)= sub2ind([height,width],ii,jj+1);        
+% %         faces(kk,2)= sub2ind([height,width],jj+1,ii);        
+% %         %Index 3       
+% % %         faces(kk,3)= sub2ind([height,width],ii+1,jj+1);
+% %         faces(kk,3)= sub2ind([height,width],jj+1,ii+1);
+% %         kk=kk+1;
+% %     end
+% % end
 
 end
 
