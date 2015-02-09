@@ -101,16 +101,18 @@ class blenderLoad:
             ##Location
             bpy.data.objects['Camera'].location = (0.0,0.0,15.0)
             #Rotation
-            bpy.data.objects['Camera'].rotation_euler = (radians(0.0),radians(0.0),radians(0.0))
+            #bpy.data.objects['Camera'].rotation_euler = (radians(0.0),radians(0.0),radians(0.0))
 
             ##Move the Lamp aka Light
             bpy.data.objects["Lamp"].location = (0.0,0.0,15.0)
 
 
+            #FOV
             fov=75
             #FOV
             bpy.context.scene.camera.data.angle = fov*(np.pi/180.0)
 
+            #Turn off the shader so things don't seem so specular
             for item in bpy.data.materials:
                 item.use_shadeless=True
 
@@ -123,15 +125,15 @@ class blenderLoad:
             bpy.data.scenes['Scene'].render.filepath = path
             bpy.ops.render.render(write_still=True)
             '''
-            for ii in np.arange(-30,30,2):
-                for jj in np.arange(-30,30,2):
-                    for kk in np.arange(-30,30,2):
+            for ii in np.arange(-30,30,6):
+                for jj in np.arange(-30,30,6):
+                    for kk in np.arange(-30,30,6):
                         #File Names
                         path = os.getenv('DATA') + '3dFace/' + 'rotatedFaces/' + fname + '_xx_rot_' +str(ii) +'_yy_rot_' + str(jj) + '_zz_rot_' + str(kk)+ '.png'
                         print('Saving the following face')
                         print(path)
                         #Do some rotations
-                        bpy.data.objects["My_Object"].rotation_euler =(radians(0.0),radians(30.0),0.0)
+                        bpy.data.objects["My_Object"].rotation_euler =(radians(ii),radians(jj),radians(kk))
                         bpy.types.ImageFormatSettings.color_mode='RGB'
                         bpy.data.scenes['Scene'].render.filepath = path
                         bpy.ops.render.render(write_still=True)
