@@ -13,6 +13,7 @@ texture = reshape(texture,[512*512,3]);
 [vertices]=cybconvert(geometry);
 [faces,vertices]=surf2patch(vertices(:,:,1),vertices(:,:,2),vertices(:,:,3),'triangles');
 
-save(fname);
+output_path='/media/mudigonda/Gondor/Data/3dFace/matfiles/';
+save(strcat(output_path,fname));
 
 end

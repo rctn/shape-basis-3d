@@ -1,5 +1,11 @@
 %Load a few faces
-face_name = {'JUBF234','JUHF248','JUKM326','JUSF235','JUSM342'}
-for ii=1:length(face_name)
-    load_data(face_name{ii});
+DATA=getenv('DATA');
+fpath=strcat(DATA,'3dFace/geometry');
+files=dir(fpath);
+
+for ii=4:length(files)
+		%Do RTRIM to get only the file name
+    display(files(ii).name)
+		%Pass that forward
+    load_data(files(ii).name);
 end
