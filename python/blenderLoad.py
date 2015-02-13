@@ -77,7 +77,7 @@ class blenderLoad:
 
             return bpy
 
-        def generate_data(self,bpy,fname):
+        def generate_data(self,bpy,fname,params=None):
             
             #Experimenting with trying to set active object, seems more or less useless or a duplicate of the previous statements
             for object in bpy.data.objects:
@@ -94,6 +94,7 @@ class blenderLoad:
 
             ##Resize
             myObj.scale = ((0.05,0.05,0.05))
+            #myObj.scale = ((0.07,0.07,0.07))
             ##Translate
             bpy.data.objects["My_Object"].location=(0.0,0.0,0.0)
 
@@ -101,7 +102,7 @@ class blenderLoad:
             ##Location
             bpy.data.objects['Camera'].location = (0.0,0.0,15.0)
             #Rotation
-            #bpy.data.objects['Camera'].rotation_euler = (radians(0.0),radians(0.0),radians(0.0))
+            bpy.data.objects['Camera'].rotation_euler = (radians(0.0),radians(0.0),radians(0.0))
 
             ##Move the Lamp aka Light
             bpy.data.objects["Lamp"].location = (0.0,0.0,15.0)
@@ -117,25 +118,35 @@ class blenderLoad:
                 item.use_shadeless=True
 
             #Rendering file
-            bpy.context.scene.render.resolution_x=256
-            bpy.context.scene.render.resolution_y=256
+            bpy.context.scene.render.resolution_x=512
+            bpy.context.scene.render.resolution_y=512
             '''
             path = "load_face2.png" 
             bpy.types.ImageFormatSettings.color_mode='RGB'
             bpy.data.scenes['Scene'].render.filepath = path
             bpy.ops.render.render(write_still=True)
             '''
-            for ii in np.arange(-30,30,6):
-                for jj in np.arange(-30,30,6):
-                    for kk in np.arange(-30,30,6):
-                        #File Names
-                        path = os.getenv('DATA') + '3dFace/' + 'rotatedFaces/' + fname + '_xx_rot_' +str(ii) +'_yy_rot_' + str(jj) + '_zz_rot_' + str(kk)+ '.png'
-                        print('Saving the following face')
-                        print(path)
-                        #Do some rotations
-                        bpy.data.objects["My_Object"].rotation_euler =(radians(ii),radians(jj),radians(kk))
-                        bpy.types.ImageFormatSettings.color_mode='RGB'
-                        bpy.data.scenes['Scene'].render.filepath = path
-                        bpy.ops.render.render(write_still=True)
+            if params==None:
+                #Just save image
+                path = os.getenv('DATA') + '3dFace/' + 'rotatedFaces/' + fname + '_xx_rot_' +str(0) +'_yy_rot_' + str(0) + '_zz_rot_' + str(0)+ '.png'
+                print('Saving the following face')
+                print(path)
+                bpy.types.ImageFormatSettings.color_mode='RGB'
+                bpy.data.scenes['Scene'].render.filepath = path
+                bpy.ops.render.render(write_still=True)
+            else:
+
+                for ii in np.arange(-30,30,6):
+                   for jj in np.arange(-30,30,6):
+                      for kk in np.arange(-30,30,6):
+                   #File Names
+                           path = os.getenv('DATA') + '3dFace/' + 'rotatedFaces/' + fname + '_xx_rot_' +str(ii) +'_yy_rot_' + str(jj) + '_zz_rot_' + str(kk)+ '.png'
+                           print('Saving the following face')
+                           print(path)
+                           #Do some rotations
+                           bpy.data.objects["My_Object"].rotation_euler =(radians(ii),radians(jj),radians(kk))
+                           bpy.types.ImageFormatSettings.color_mode='RGB'
+                           bpy.data.scenes['Scene'].render.filepath = path
+                           bpy.ops.render.render(write_still=True)
             print("All rotations complete. Sayonara")
             return bpy

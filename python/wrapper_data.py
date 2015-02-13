@@ -9,4 +9,4 @@ files = os.listdir(data_path+'3dFace/matfiles/')
 for ii in range(len(files)):
     fname = data_path + '3dFace/matfiles/'+files[ii]
     bpy = bl.load_face(fname)
-    bpy = bl.generate_data(bpy,files[ii])
+    bpy = bl.generate_data(bpy,files[ii],1)
