@@ -1,0 +1,237 @@
+name: "Face_3D_Transformations"
+layers {
+  top: "input"
+  name: "input"
+  type: DATA
+  data_param {
+    source: "/media/mudigonda/Gondor/Data/3dFace/train_face_ldb"
+    backend: LEVELDB
+    batch_size: 10
+  }
+  transform_param {
+   mean_file:"/media/mudigonda/Gondor/Data/3dFace/ldb_meanfile.proto" 
+  }
+  include: { phase: TRAIN }
+}
+layers {
+  top: "input"
+  name: "input"
+  type: DATA
+  data_param {
+#We are using test on training
+    source: "/media/mudigonda/Gondor/Data/3dFace/train_face_ldb"
+    backend: LEVELDB
+    batch_size: 10
+  }
+  transform_param {
+		mean_file:"/media/mudigonda/Gondor/Data/3dFace/ldb_meanfile.proto"
+  }
+  include: {
+    phase: TEST
+  }
+}
+layers {
+	top: "output"
+	name: "output"
+	type: DATA
+	data_param {
+		source: "/media/mudigonda/Gondor/Data/3dFace/output_face_ldb"
+		backend: LEVELDB
+		batch_size: 10
+	}
+	transform_param {
+		mean_file:"/media/mudigonda/Gondor/Data/3dFace/ldb_meanfile.proto"
+	}
+	include: {
+		phase: TRAIN
+	}
+}
+layers {
+	top: "output"
+	name: "output"
+	type: DATA
+	data_param {
+		source: "/media/mudigonda/Gondor/Data/3dFace/output_face_ldb"
+		backend: LEVELDB
+		batch_size: 10
+	}
+	transform_param {
+		mean_file:"/media/mudigonda/Gondor/Data/3dFace/ldb_meanfile.proto"
+	}
+	include: {
+		phase: TEST
+	}
+}
+layers {
+	top: "transformations"
+	name: "transformations"
+	type: DATA
+	data_param {
+		source: "/media/mudigonda/Gondor/Data/3dFace/transform_face_ldb"
+		backend: LEVELDB
+		batch_size: 10
+	}
+	include: {
+		PHASE: TRAIN
+	}
+}
+layers {
+	top: "transformations"
+	name: "transformations"
+	type: DATA
+	data_param {
+		source: "/media/mudigonda/Gondor/Data/3dFace/transform_face_ldb"
+		backend: LEVELDB
+		batch_size: 10
+	}
+	include {
+		PHASE: TEST
+	}
+}
+
+layers{
+	name:"conv1"
+	type:CONVOLUTION
+	bottom:"input"
+	top:"conv1"
+	blobs_lr:1
+	blobs_lr:2
+	convolution_param {
+		num_output: 64 
+		pad: 1
+		kernel_size: 3
+		stride: 1
+	}
+}
+layers{
+	name:"pool1"
+	type:POOLING
+	bottom:"conv1"
+	top:"pool1"
+	pooling_param {
+		pool:MAX
+		kernel_size:3
+		stride:2
+	}
+}
+layers{
+	name:"relu1"
+	type:RELU
+	bottom:"pool1"
+	top:"pool1"
+}
+layers{
+	name:"conv2"
+	type:CONVOLUTION
+	bottom:"pool1"
+	top:"conv2"
+	blobs_lr:1
+	blobs_lr:2
+	convolution_param {
+		num_output: 64 
+		pad:1 
+		kernel_size:3 
+		stride:1
+	}
+}
+layers{
+	name:"pool2"
+	type:POOLING
+	bottom:"conv2"
+	top:"pool2"
+	pooling_param{
+		pool:MAX
+		kernel_size:3
+		stride:2
+	}
+}
+layers{
+	name:"relu2"
+	type:RELU
+	bottom:"conv2"
+	top:"conv2"
+}
+layers{
+	name:"transf_to_hidden"
+	type:INNER_PRODUCT
+	bottom:"transformations"
+	top:"transf_to_hidden"
+	blobs_lr:1
+	blobs_lr:2
+	weight_decay:250
+	weight_decay:0
+	inner_product_param{
+		num_output:100 
+	}
+}
+layers{
+	name:"pool_to_hidden"
+	type:INNER_PRODUCT
+	bottom:"pool2"
+	top: "pool_to_hidden"
+	blobs_lr:1
+	blobs_lr:2
+	weight_decay:250
+	weight_decay:0
+	inner_product_param{
+		num_output:1000
+	}
+}
+layers{
+	name:"hidden_to_relu"
+	type:RELU
+	bottom:"pool_to_hidden"
+	top:"pool_to_hidden"
+}
+
+layers{
+	name:"concat_transf_vision"
+	type:CONCAT
+	bottom:"pool_to_hidden"
+	bottom:"transf_to_hidden"
+	top:"concat_transf_vision"
+	concat_param {
+		concat_dim: 1
+	}
+}
+layers{
+	name:"concat_to_relu"
+	type:RELU
+	bottom:"concat_transf_vision"
+	top:"concat_transf_vision"
+}
+layers{
+	name:"concat_to_hidden1"
+	type:INNER_PRODUCT
+	bottom:"concat_transf_vision"
+	top:"concat_to_hidden1"
+	blobs_lr:1
+	blobs_lr:2
+	weight_decay:250
+	weight_decay:0
+	inner_product_param{
+		num_output:1000
+	}
+}
+
+layers{
+	name:"hidden_to_output"
+	type:INNER_PRODUCT
+	bottom:"concat_to_hidden1"
+	top:"hidden_to_output"
+	blobs_lr:1
+	blobs_lr:2
+	weight_decay:250
+	weight_decay:0
+	inner_product_param{
+		num_output:12288
+	}
+}
+layers{
+	bottom:"hidden_to_output"
+	bottom:"output"
+	top:"l2_error"
+	name:"loss"
+	type:EUCLIDEAN_LOSS
+	loss_weight:1
+}
