@@ -34,57 +34,60 @@ def make_fname_lists(path='/media/mudigonda/Gondor/Data/3dFace/rotatedFaces/'):
     print('Creating lists done')
     return files,identity,x_rot,y_rot,z_rot 
 
-#Now write out the HDF5
-def write_hdf5(outputfname,inputpath='/media/mudigonda/Gondor/Data/3dFace/rotatedFaces/'):
-    files = os.listdir(inputpath)
-    no_of_files = len(files)
-    #File handle
-    try:
-        hfl = h5py.File(outputfname,"w")
-        dset = hfl.create_dataset("Faces",(no_of_files,196608),'i')
-        counter = 0
-        for fname in files:
-            if np.mod(counter,100)==0:
-                print('The value of the counter is %d',counter)
-            im = ndimage.imread(inputpath+fname)
-            im_wo_alpha = im[:,:,0:3]
-            dset[counter,] = im_wo_alpha.flatten()
-            counter = counter + 1
-    except:
-        print('Something went wrong')
-    hfl.flush()
-    hfl.close()
-
-    return 1
-
-def write_train_hdf5(outputfnames=None,inputpath=None,no_of_files=100):
+def write_hdf5(inputpath=None,outputfnames=None,no_of_files=None,write_flag=0):
 
     #First we create three file handles
     #Let's assume there are training folders and test folders
     if inputpath is None:
-        inputpath='/media/mudigonda/Gondor/Data/3dFace/rotatedFaces/train/'
+        inputpath='/media/mudigonda/Gondor/Data/3dFace/rotatedFaces/train/resized/'
     if outputfnames is None:
-        outputfnames ='/media/mudigonda/Gondor/Data/3dFace/train.hdf5'
+        outputfnames ='/media/mudigonda/Gondor/Data/3dFace/'
+    if write_flag==0 :
+        FLAG='train'
+    else: 
+        FLAG='test'
 
-    [files,face_id,xx,yy,zz] = make_fname_lists(inputpath)
+    try:
+        [files,face_id,xx,yy,zz] = make_fname_lists(inputpath)
+    except:
+        print('Could not create file list')
+
+    if no_of_files is None:
+        no_of_files = len(files)
+
+    print('Here are the parameters')
+    print('Input Path',inputpath)
+    print('Output Path',outputfnames)
+    print('No of files',no_of_files)
+
+    #Load a dummy file for getting image dimensions
+    im_tmp = ndimage.imread(inputpath+files[0])
+    size = im_tmp.shape
+    print('Size of dummy image is',size)
     print('Trying to create training file handles')
     try:
-        train = h5py.File(outputfnames,"w")
-        train_inp_dset = train.create_dataset("Input",(no_of_files,120000))
-        train_op_dset = train.create_dataset("Output",(no_of_files,120000))
-        train_transf_dset = train.create_dataset("Transformation",(no_of_files,3))
+        h5_input = h5py.File(outputfnames+FLAG+'_input'+'.hdf5',"w")
+        h5_output = h5py.File(outputfnames+FLAG+'_output'+'.hdf5',"w")
+        h5_transf = h5py.File(outputfnames+FLAG+'_transf.hdf5',"w")
+        #make sure not to include the alpha channel, subtract 1
+        inp_dset = h5_input.create_dataset("Input",(no_of_files*size[0]*size[1]*(size[2]-1),))
+        op_dset = h5_output.create_dataset("Output",(no_of_files*size[0]*size[1]*(size[2]-1),))
+        transf_dset = h5_transf.create_dataset("Transformation",(no_of_files*3,))
+        INPUT_SIZE=size[0]*size[1]*(size[2]-1)
     except:
         print("It looks like I couldn't create the file handles for the training set")
-        train.flush()
-        train.close()
+        return 1
 
     #Then we iterate through the files list that we get tcalling making list
     print('Okay, here goes -- trying to write stuff into files')
+    counter1 = 0
+    counter2 = 0 
     #for ii in np.arange(len(face_id)):
-    for ii in np.arange(100):
-        if np.mod(ii,1000)==0:
+    for ii in range(no_of_files):
+        if np.mod(ii,1000)==0 and no_of_files>1000:
             print('Written images = ',ii)
-
+        else:
+            print(ii)
         #Read File
         try:
             im_ip = ndimage.imread(inputpath+files[ii])
@@ -98,13 +101,14 @@ def write_train_hdf5(outputfnames=None,inputpath=None,no_of_files=100):
         except:
             print("Unable to find similar Faces. Fail",face_id[ii])
         try:
-            rand_int = random.randint(0,len(faces_idx))
+            rand_int = random.randint(0,len(faces_idx)-1) #weird bug it should not return len() but it does
         except:
             print("Failed to randint. Values of rand_int and faces_idx[rand_int] are",rand_int,faces_idx[rand_int]) 
         try:
             im_op = ndimage.imread(inputpath+files[faces_idx[rand_int]])
             im_op_wo_alpha = im_op[:,:,0:3]
         except:
+            pdb.set_trace()
             print("Unable to load file, this is the file path",inputpath+files[faces_idx[rand_int]])
         try:
             #The transformation between the two is just Pose2-Pose1
@@ -114,16 +118,23 @@ def write_train_hdf5(outputfnames=None,inputpath=None,no_of_files=100):
         except:
             print("Unable to transform input to output because of bad indexing")
         try:
-            train_inp_dset[ii,] = im_ip_wo_alpha.flatten()
-            train_op_dset[ii,] = im_op_wo_alpha.flatten()
+            inp_dset[counter1:counter1+INPUT_SIZE] = im_ip_wo_alpha.flatten()
+            op_dset[counter1:counter1+INPUT_SIZE] = im_op_wo_alpha.flatten()
+            counter1 = counter1+INPUT_SIZE
         except:
             print("Unable to Write out the inputs to the file handle")
+            pdb.set_trace()
         try:
-            train_transf_dset[ii,] = np.array([xx_diff,yy_diff,zz_diff]).flatten()
+            transf_dset[counter2:counter2+3] = np.array([xx_diff,yy_diff,zz_diff]).flatten()
+            counter2 = counter2 + 3
         except:
             print("Unable to write this tuple of transformations into the dataset")
-    train.flush()
-    train.close()
+    h5_input.flush()
+    h5_output.flush()
+    h5_transf.flush()
+    h5_input.close()
+    h5_output.close()
+    h5_transf.close()
     return 1
 
 
@@ -172,3 +183,27 @@ def crop_images(path):
             print('could not convert')
     os.chdir('/media/mudigonda/Gondor/Projects/shape-basis-3d/python')
     return 1
+
+def resize_images(path,resize_params=None):
+    os.chdir(path)
+    if resize_params is None:
+        resize_params = '64x64'
+    files_to_resize=glob.glob("*")
+    for ii in range(len(files_to_resize)):
+        if np.mod(ii,1000)==0:
+            print('The value of the counter is ',ii)
+        try:
+            call('convert -resize '+resize_params+' '+files_to_resize[ii]+' resized/'+files_to_resize[ii],shell=True)
+        except:
+            print('could not resize')
+    os.chdir('/media/mudigonda/Gondor/Projects/shape-basis-3d/python')
+    return 1
+
+def read_mean_txt(fileName):
+    with open(fileName,'r') as f:
+        l = f.readlines()
+        mn = [float(i.split()[0]) for i in l]
+        mn = np.array(mn)
+        mn = mn/np.max(mn)
+        mn = np.reshape(mn,[64,64,3])
+    return mn

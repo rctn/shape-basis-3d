@@ -5,6 +5,7 @@ from scipy.misc import imread
 from sklearn.decomposition import PCA
 from scipy.sparse.linalg import eigs
 import glob
+from matplotlib import pyplot as plt
 
 #Load self movements
 path='/media/mudigonda/Gondor/Data/sensorimotor/'
