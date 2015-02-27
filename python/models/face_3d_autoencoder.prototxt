@@ -4,7 +4,7 @@ layers {
   name: "input"
   data_param {
     source: "/media/mudigonda/Gondor/Data/3dFace/train_input"
-		type: LEVELDB
+		backend: LEVELDB
     batch_size: 10
   }
   transform_param {
@@ -16,9 +16,8 @@ layers {
   top: "input"
   name: "input"
   data_param {
-#We are using test on training
     source: "/media/mudigonda/Gondor/Data/3dFace/test_input"
-		type: LEVELDB
+		backend: LEVELDB
     batch_size: 10
   }
   transform_param {
@@ -33,7 +32,7 @@ layers {
 	name: "output"
 	data_param {
 		source: "/media/mudigonda/Gondor/Data/3dFace/train_output"
-		type: LEVELDB
+		backend: LEVELDB
 		batch_size: 10
 	}
 	transform_param {
@@ -48,7 +47,7 @@ layers {
 	name: "output"
 	data_param {
 		source: "/media/mudigonda/Gondor/Data/3dFace/test_output"
-		type: LEVELDB
+		backend: LEVELDB
 		batch_size: 10
 	}
 	transform_param {
@@ -63,10 +62,10 @@ layers {
 	name: "transformations"
 	data_param {
 		source: "/media/mudigonda/Gondor/Data/3dFace/train_transf"
-		type: LEVELDB
+		backend: LEVELDB
 		batch_size: 10
 	}
-	include: {
+	include {
 		PHASE: TRAIN
 	}
 }
@@ -75,7 +74,7 @@ layers {
 	name: "transformations"
 	data_param {
 		source: "/media/mudigonda/Gondor/Data/3dFace/test_transf"
-		type: LEVELDB
+		backend: LEVELDB
 		batch_size: 10
 	}
 	include {
