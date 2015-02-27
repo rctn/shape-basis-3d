@@ -84,10 +84,8 @@ def write_hdf5(inputpath=None,outputfnames=None,no_of_files=None,write_flag=0):
     counter2 = 0 
     #for ii in np.arange(len(face_id)):
     for ii in range(no_of_files):
-        if np.mod(ii,1000)==0 and no_of_files>1000:
+        if np.mod(ii,1000)==0: 
             print('Written images = ',ii)
-        else:
-            print(ii)
         #Read File
         try:
             im_ip = ndimage.imread(inputpath+files[ii])

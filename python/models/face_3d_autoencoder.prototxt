@@ -2,9 +2,9 @@ name: "Face_3D_Transformations"
 layers {
   top: "input"
   name: "input"
-  type: HDF5_DATA
   data_param {
-    source: "/media/mudigonda/Gondor/Data/3dFace/train_input.hdf5"
+    source: "/media/mudigonda/Gondor/Data/3dFace/train_input"
+		type: LEVELDB
     batch_size: 10
   }
   transform_param {
@@ -15,10 +15,10 @@ layers {
 layers {
   top: "input"
   name: "input"
-  type: HDF5_DATA
   data_param {
 #We are using test on training
-    source: "/media/mudigonda/Gondor/Data/3dFace/test_input.hdf5"
+    source: "/media/mudigonda/Gondor/Data/3dFace/test_input"
+		type: LEVELDB
     batch_size: 10
   }
   transform_param {
@@ -31,9 +31,9 @@ layers {
 layers {
 	top: "output"
 	name: "output"
-	type: HDF5_DATA
 	data_param {
-		source: "/media/mudigonda/Gondor/Data/3dFace/train_output.hdf5"
+		source: "/media/mudigonda/Gondor/Data/3dFace/train_output"
+		type: LEVELDB
 		batch_size: 10
 	}
 	transform_param {
@@ -46,9 +46,9 @@ layers {
 layers {
 	top: "output"
 	name: "output"
-	type: HDF5_DATA
 	data_param {
-		source: "/media/mudigonda/Gondor/Data/3dFace/test_output.hdf5"
+		source: "/media/mudigonda/Gondor/Data/3dFace/test_output"
+		type: LEVELDB
 		batch_size: 10
 	}
 	transform_param {
@@ -61,9 +61,9 @@ layers {
 layers {
 	top: "transformations"
 	name: "transformations"
-	type: HDF5_DATA
 	data_param {
-		source: "/media/mudigonda/Gondor/Data/3dFace/train_transf.hdf5"
+		source: "/media/mudigonda/Gondor/Data/3dFace/train_transf"
+		type: LEVELDB
 		batch_size: 10
 	}
 	include: {
@@ -73,9 +73,9 @@ layers {
 layers {
 	top: "transformations"
 	name: "transformations"
-	type: HDF5_DATA
 	data_param {
-		source: "/media/mudigonda/Gondor/Data/3dFace/test_transf.hdf5"
+		source: "/media/mudigonda/Gondor/Data/3dFace/test_transf"
+		type: LEVELDB
 		batch_size: 10
 	}
 	include {
