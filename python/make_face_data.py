@@ -10,7 +10,7 @@ import pdb
 from subprocess import call
 import random
 
-def make_fname_lists(path='/media/mudigonda/Gondor/Data/3dFace/rotatedFaces/'):
+def make_fname_lists(path='/media/mudigonda/Gondor/Data/3dFace/rotatedFaces/train/resized'):
     files = os.listdir(path)
     identity = []
     x_rot = []

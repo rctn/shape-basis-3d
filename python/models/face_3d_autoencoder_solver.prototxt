@@ -21,6 +21,8 @@ display: 200
 max_iter: 65000
 # snapshot intermediate results
 snapshot: 5000
-snapshot_prefix: "/media/mudigonda/Gondor/Data/3dFace/"
+snapshot_prefix: "/media/mudigonda/Gondor/Data/3dFace/simulations/3dmanifold/"
 # solver mode: CPU or GPU
 solver_mode: GPU
+#Trying to turn debug info on
+debug_info: true

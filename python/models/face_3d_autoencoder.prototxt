@@ -106,6 +106,9 @@ layer{
 		pad: 1
 		kernel_size: 3
 		stride: 1
+		weight_filler{
+		type:"xavier"
+		}
 	}
 }
 layer{
@@ -143,6 +146,9 @@ layer{
 		pad:1 
 		kernel_size:3 
 		stride:1
+		weight_filler{
+		type:"xavier"
+		}
 	}
 }
 layer{
@@ -177,6 +183,9 @@ layer{
 	}
 	inner_product_param{
 		num_output:100 
+		weight_filler{
+		type:"xavier"
+		}
 	}
 }
 layer{
@@ -194,6 +203,9 @@ layer{
 	}
 	inner_product_param{
 		num_output:1000
+		weight_filler{
+		type:"xavier"
+		}
 	}
 }
 layer{
@@ -234,6 +246,9 @@ layer{
 	}
 	inner_product_param{
 		num_output:1000
+		weight_filler{
+		type:"xavier"
+		}
 	}
 }
 
@@ -252,6 +267,9 @@ layer{
 	}
 	inner_product_param{
 		num_output:12288
+		weight_filler{
+		type:"xavier"
+		}
 	}
 }
 layer{
@@ -272,5 +290,5 @@ layer{
 	top:"l2_error"
 	name:"loss"
 	type:"EuclideanLoss"
-	loss_weight:1
+	loss_weight:.0001
 }
