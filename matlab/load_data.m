@@ -1,4 +1,4 @@
-function [vertices,faces] = load_data(fname)
+function [vertices,faces,geometry,texture] = load_data(fname)
 %Get data
 DATA=getenv('DATA');
 
