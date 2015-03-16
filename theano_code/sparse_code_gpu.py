@@ -41,11 +41,10 @@ class LBFGS_SC:
         self.basis = np.random.randn(self.patchdim**2,self.basis_no).astype('float32')
         self.data = theano.shared(self.data)
         self.basis = theano.shared(self.basis)
+        self.residual = [] 
+        #self.residual = theano.shared(self.residual)
         print('Compiling theano function')
         self.f = self.create_theano_fn()
-        print('Theano debug')
-        pdb.set_trace()
-        theano.pp()
         return 
 
     def create_theano_fn(self):
@@ -71,29 +70,33 @@ class LBFGS_SC:
 
     def load_new_batch(self,data):
         #Update self.data to have new data
-        self.data = data
+        self.data.set_value(data.astype('float32'))
         return
 
     def update_basis(self):
+        basis = self.basis.get_value()
+        data = self.data.get_value()
         #Update basis with the right update steps
-        Residual = self.data - self.basis.dot(self.coeff)
+        Residual = data - basis.dot(self.coeff)
         dbasis = self.LR * Residual.dot(self.coeff.T)
-        self.basis = self.basis + dbasis
+        basis = basis + dbasis
         #Normalize basis
         #norm_basis = np.diag(1/np.sqrt(np.sum(self.basis**2,axis=0)))
         #self.basis = np.dot(self.basis,norm_basis)
-        norm_basis = self.basis**2
+        norm_basis = basis**2
         norm_basis = norm_basis.sum(axis=0)
-        norm_basis = T.sqrt(norm_basis)
-        norm_basis = T.nlinalg.diag(1/norm_basis)
-        self.basis = self.basis.dot(norm_basis)
+        norm_basis = np.sqrt(norm_basis)
+        norm_basis = np.diag(1.0/norm_basis)
+        basis = basis.dot(norm_basis)
+        self.basis.set_value(basis.astype('float32'))
         #print('The norm of the basis is',np.linalg.norm(self.basis)) 
         #self.basis=np.asarray(self.basis)
         #Residual= np.mean(np.sqrt(np.sum(Residual**2,axis=0)))
         tmp = Residual**2
         tmp = tmp.sum(axis=0)
         Residual = tmp.mean()
-        return Residual
+        self.residual.append(Residual)
+        return 
         #return
 
     def visualize_basis(self,iteration,image_shape=None):
@@ -110,5 +113,6 @@ class LBFGS_SC:
                 ax[ii,jj].imshow(im)
         savepath_image=self.savepath + '_iterations_' + str(iteration) + '_visualize_.png'
         f.savefig(savepath_image)
+        f.close()
         return
 

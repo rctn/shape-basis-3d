@@ -25,12 +25,12 @@ if __name__ == "__main__":
     path= proj_path + 'matfiles/*'
 
     #Inference Variables
-    LR = 0.1
+    LR = 0.05
     #eta = 0.1
-    training_iter = 1000
+    training_iter = 3
     #InferIter = 300
     #lamb=0.05
-    lam = 0.1
+    lam = 0.2
     #adapt = .9
     patchdim = 512
     batch = 30
@@ -82,6 +82,7 @@ if __name__ == "__main__":
     residual_list=[]
     for ii in np.arange(training_iter):
     #Make data
+        print('Training iteration -- ',ii)
         gen_rand_ind = np.random.randint(0,shapes_whitened.shape[0],size=batch)
         #Note this way, each column is a data vector
         tm1 = time.time()
@@ -92,27 +93,22 @@ if __name__ == "__main__":
         lbfgs_sc.infer_coeff()
         tm4 = time.time()
         #residual = lbfgs_sc.update_basis()
-        res=lbfgs_sc.update_basis()
+        lbfgs_sc.update_basis()
         tm5 = time.time()
-        res = res.eval()
-        print(res)
-        del(res)
-        tm6 = time.time()
         print('Temporary data variable Cost in seconds', tm2-tm1)
         print('Load new batch cost in seconds', tm3-tm2)
         print('Infer coefficients cost in seconds', tm4-tm3)
         print('Updating basis cost in seconds',tm5-tm4)
-        print('Cost for evaluating results. I think this is some GPU to CPU BS', tm6-tm5)
-        '''
+        
         #residual_list.append(residual)
         if np.mod(ii,10)==0:
             print('Saving the basis now, for iteration ',ii)
             shape_basis = {
             'mean_face': mean_face,
             'shapes_subtr_mean_face':shapes_subtr_mean_face,
-            'sparse_shape_basis': lbfgs_sc.basis.eval(),
+            'sparse_shape_basis': lbfgs_sc.basis.get_value(),
             #'residuals':residual_list,
-            'coeff':lbfgs_sc.coeff,
+            #'coeff':lbfgs_sc.coeff,
             'whitening_matrix': W,
             'vertices':vertices,
             }
@@ -120,5 +116,5 @@ if __name__ == "__main__":
             print('Saving basis visualizations now')
             lbfgs_sc.visualize_basis(ii)
             print('Visualizations done....back to work now')
-        '''
+        
 
