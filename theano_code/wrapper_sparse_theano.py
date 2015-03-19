@@ -27,13 +27,13 @@ if __name__ == "__main__":
     #Inference Variables
     LR = 0.05
     #eta = 0.1
-    training_iter = 3
+    training_iter = 3000
     #InferIter = 300
     #lamb=0.05
-    lam = 0.2
+    lam = 0.05
     #adapt = .9
     patchdim = 512
-    batch = 30
+    batch = 200
     basis_no =50
     basis = np.zeros([patchdim**2,basis_no])
     coeff = np.random.randn(batch,basis_no)
@@ -93,21 +93,25 @@ if __name__ == "__main__":
         lbfgs_sc.infer_coeff()
         tm4 = time.time()
         #residual = lbfgs_sc.update_basis()
-        lbfgs_sc.update_basis()
-        tm5 = time.time()
+        coeff = lbfgs_sc.coeff
+        coeff = coeff.astype('float32')
+        res,sparsity = lbfgs_sc.update_basis(coeff)
+        residual_list.append(res)
+        tm5 = time.time()    
         print('Temporary data variable Cost in seconds', tm2-tm1)
         print('Load new batch cost in seconds', tm3-tm2)
         print('Infer coefficients cost in seconds', tm4-tm3)
         print('Updating basis cost in seconds',tm5-tm4)
-        
+        print('Residual value ',res)
+        print('Sparsity ', sparsity)
         #residual_list.append(residual)
-        if np.mod(ii,10)==0:
+        if np.mod(ii,100)==0:
             print('Saving the basis now, for iteration ',ii)
             shape_basis = {
             'mean_face': mean_face,
             'shapes_subtr_mean_face':shapes_subtr_mean_face,
             'sparse_shape_basis': lbfgs_sc.basis.get_value(),
-            #'residuals':residual_list,
+            'residuals':residual_list,
             #'coeff':lbfgs_sc.coeff,
             'whitening_matrix': W,
             'vertices':vertices,
@@ -116,5 +120,3 @@ if __name__ == "__main__":
             print('Saving basis visualizations now')
             lbfgs_sc.visualize_basis(ii)
             print('Visualizations done....back to work now')
-        
-

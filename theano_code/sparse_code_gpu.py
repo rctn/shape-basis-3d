@@ -45,6 +45,7 @@ class LBFGS_SC:
         #self.residual = theano.shared(self.residual)
         print('Compiling theano function')
         self.f = self.create_theano_fn()
+        self.update_basis = self.create_update_basis()
         return 
 
     def create_theano_fn(self):
@@ -54,7 +55,7 @@ class LBFGS_SC:
         tmp = (self.data - self.basis.dot(coeff))**2
         tmp = 0.5*tmp.sum(axis=0)
         tmp = tmp.mean()
-        sparsity = self.lam * T.abs_(coeff).sum()
+        sparsity = self.lam * T.abs_(coeff).sum(axis=0).mean()
         obj = tmp + sparsity
         grads = T.grad(obj,coeff_flat)
         f = theano.function([coeff_flat],[obj.astype('float64'),grads.astype('float64')])
@@ -64,40 +65,48 @@ class LBFGS_SC:
         #init_coeff = np.zeros(4000).astype('float32')
         init_coeff = np.zeros(self.basis_no*self.batch).astype('float32')
         #print(self.f(self.coeff))
-        res = minimize(fun=self.f,x0=init_coeff,method='L-BFGS-B',jac=True)
+        res = minimize(fun=self.f,x0=init_coeff,method='L-BFGS-B',jac=True,options={'disp':False})
         self.coeff = np.reshape(res.x,[self.basis_no,self.batch])
+        print np.sum(np.abs(self.coeff))
         return res.x 
 
     def load_new_batch(self,data):
         #Update self.data to have new data
         self.data.set_value(data.astype('float32'))
         return
+    
+        
 
-    def update_basis(self):
-        basis = self.basis.get_value()
-        data = self.data.get_value()
+    def create_update_basis(self):
+        coeff_f64 = T.dmatrix('coeff')
+        coeff = T.cast(coeff_f64,'float32')
+        #coeff = T.reshape(coeff,[self.basis_no,self.batch])
+        
+        #basis = self.basis.get_value()
+        #data = self.data.get_value()
         #Update basis with the right update steps
-        Residual = data - basis.dot(self.coeff)
-        dbasis = self.LR * Residual.dot(self.coeff.T)
-        basis = basis + dbasis
+        Residual = self.data - self.basis.dot(coeff)
+        dbasis = self.LR * Residual.dot(coeff.T)
+        basis = self.basis + dbasis
         #Normalize basis
         #norm_basis = np.diag(1/np.sqrt(np.sum(self.basis**2,axis=0)))
         #self.basis = np.dot(self.basis,norm_basis)
         norm_basis = basis**2
         norm_basis = norm_basis.sum(axis=0)
-        norm_basis = np.sqrt(norm_basis)
-        norm_basis = np.diag(1.0/norm_basis)
+        norm_basis = T.sqrt(norm_basis)
+        norm_basis = T.nlinalg.diag(1.0/norm_basis)
         basis = basis.dot(norm_basis)
-        self.basis.set_value(basis.astype('float32'))
-        #print('The norm of the basis is',np.linalg.norm(self.basis)) 
+        updates = {self.basis: basis}
+        #self.basis.set_value(self.basis)
+        #self.basis.set_value(basis.astype('float32'))
         #self.basis=np.asarray(self.basis)
         #Residual= np.mean(np.sqrt(np.sum(Residual**2,axis=0)))
         tmp = Residual**2
-        tmp = tmp.sum(axis=0)
+        tmp = 0.5*tmp.sum(axis=0)
         Residual = tmp.mean()
-        self.residual.append(Residual)
-        return 
-        #return
+        num_on = (T.abs_(coeff)>0).sum().astype('float32')/float(self.basis_no*self.batch)
+        f = theano.function([coeff_f64],[Residual.astype('float32'),num_on], updates=updates)
+        return f 
 
     def visualize_basis(self,iteration,image_shape=None):
         #Use function we wrote previously
@@ -107,12 +116,12 @@ class LBFGS_SC:
             f, ax = plt.subplots(image_shape[0],image_shape[1],sharex=True,sharey=True)
         for ii in np.arange(ax.shape[0]):
             for jj in np.arange(ax.shape[1]):
-                tmp = self.basis[:,ii*ax.shape[1]+jj]
+                tmp = self.basis.get_value()
+                tmp = tmp[:,ii*ax.shape[1]+jj]
                 im = tmp.reshape([self.patchdim,self.patchdim])
-                im = im.eval()
+                im = im
                 ax[ii,jj].imshow(im)
         savepath_image=self.savepath + '_iterations_' + str(iteration) + '_visualize_.png'
         f.savefig(savepath_image)
-        f.close()
         return
 
