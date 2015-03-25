@@ -61,6 +61,35 @@ def make_im(X, Y, Z, imSz=256):
 	
 	return im
 
+def make_im_noloop(X,Y,Z, binSz =256):
+    X = X.flatten()
+    Y = Y.flatten()
+    Z = Z.flatten()
+
+    Z = Z - Z.min() + 1300.0
+    x = X/Z
+    y = Y/Z
+
+    mnX, mxX =  x.min(), x.max()
+    mnY, mxY =  y.min(), y.max()
+    mn = np.min((mnX, mnY))
+    mx = np.max((mxX, mxY))
+
+    im = np.zeros((binSz*binSz))
+    new_x = (binSz-1)*(x - mn)/(mx-mn)
+    new_y = (binSz-1)*(y - mn)/(mx-mn)
+    '''
+    for ii in np.arange(x.shape[0]):
+        im[new_x[ii],new_y[ii]] = Z[ii]
+    '''
+    lin_idx = new_x*binSz + new_y
+    pdb.set_trace()
+    im[lin_idx.astype('uint8')] = Z
+
+    return im, new_x,new_y
+
+    
+
 
 def render_im(vertices, texture, imSz=256):
 	'''
