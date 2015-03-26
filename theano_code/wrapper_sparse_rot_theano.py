@@ -12,8 +12,8 @@ from scipy.sparse.linalg import eigs
 import glob
 from scipy.optimize import minimize 
 import os
-import pdb
-import sparse_code_gpu
+import ipdb
+import sparse_code_rot_gpu
 import time
 
 if __name__ == "__main__":
@@ -77,20 +77,21 @@ if __name__ == "__main__":
     shapes_whitened = np.dot(W,shapes_subtr_mean_face)
     
     #Create object
-    lbfgs_sc = sparse_code_gpu.LBFGS_SC(LR=LR,lam=lam,batch=batch,basis_no=basis_no,patchdim=patchdim,savepath=matfile_write_path)
-
+    lbfgs_sc = sparse_code_rot_gpu.LBFGS_SC(LR=LR,lam=lam,batch=batch,basis_no=basis_no,patchdim=patchdim,savepath=matfile_write_path)
     residual_list=[]
+    gen_rand_ind = np.random.randint(0,shapes_whitened.shape[0],size=batch)
     data = shapes_whitened[gen_rand_ind,:].T
-    lbfgs_sc.load_new_batch(data,X,Y)
+    ipdb.set_trace()
+    lbfgs_sc.load_all_data(X,Y,data)
     for ii in np.arange(training_iter):
     #Make data
         print('Training iteration -- ',ii)
-        #gen_rand_ind = np.random.randint(0,shapes_whitened.shape[0],size=batch)
-        #Note this way, each column is a data vector
         tm1 = time.time()
-        #data = shapes_whitened[gen_rand_ind,:].T 
+        #New Random Idx
+        lbfgs_sc.new_sample()
         tm2 = time.time()
-        lbfgs_sc.load_new_batch(data)
+        #New Projection Matrix
+        lbfgs_sc.new_proj_matrix()
         tm3 = time.time()
         lbfgs_sc.infer_coeff()
         tm4 = time.time()

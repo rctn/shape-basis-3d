@@ -2,7 +2,7 @@ import numpy as np
 from scipy.optimize import minimize
 import theano 
 from theano import tensor as T
-import pdb
+import ipdb
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -40,21 +40,30 @@ class LBFGS_SC:
         self.data = np.random.randn(self.patchdim**2,self.batch).astype('float32')
         self.X = np.random.randn(self.patchdim**2,1).astype('float32')
         self.Y = np.random.randn(self.patchdim**2,1).astype('float32')
+        self.coeff = np.random.randn(self.basis_no,self.batch).astype('float32')
         self.proj_matrix = np.random.randn(3,3)
         self.basis = np.random.randn(self.patchdim**2,self.basis_no).astype('float32')
+        self.rand_idx = np.random.randint(0,200)
         self.data = theano.shared(self.data)
         self.basis = theano.shared(self.basis)
-        self.X = theano.shared(self.X)
-        self.Y = theano.shared(self.Y)
+        self.X = theano.shared(self.X,'X')
+        self.Y = theano.shared(self.Y,'Y')
         self.proj_matrix = theano.shared(self.proj_matrix)
+        self.rand_idx = theano.shared(self.rand_idx)
+        self.coeff = theano.shared(self.coeff)
         self.residual = [] 
-        #self.residual = theano.shared(self.residual)
+        print('Compiling Projection matrix function')
+        self.proj_data = self.create_proj_data_matrix()
+        print('Compiling Projection matrix function')
+        self.proj_basis = self.create_proj_basis_matrix()
         print('Compiling inference theano function')
         self.f = self.create_theano_fn()
+        print('Compiling inference theano function')
+        self.f = self.create_theano_proj_fn()
         print('Compiling update basis theano function')
         self.update_basis = self.create_update_basis()
-        print('Compiling Projection matrix function')
-        self.proj_data = self.create_proj_matrix()
+        print('Compiling update basis theano function')
+        self.update_basis = self.create_update_proj_basis()
         return 
 
     def create_theano_fn(self):
@@ -62,6 +71,27 @@ class LBFGS_SC:
         coeff = T.cast(coeff_flat,'float32')
         coeff = T.reshape(coeff,[self.basis_no,self.batch])
         tmp = (self.data - self.basis.dot(coeff))**2
+        tmp = 0.5*tmp.sum(axis=0)
+        tmp = tmp.mean()
+        sparsity = self.lam * T.abs_(coeff).sum(axis=0).mean()
+        obj = tmp + sparsity
+        grads = T.grad(obj,coeff_flat)
+        f = theano.function([coeff_flat],[obj.astype('float64'),grads.astype('float64')])
+        return f 
+
+
+    def create_theano_proj_fn(self):
+        coeff_flat = T.dvector('coeffs')
+        coeff = T.cast(coeff_flat,'float32')
+        coeff = T.reshape(coeff,[self.basis_no,self.batch])
+        var1 = self.proj_data(0)
+        proj_basis = T.zeros((self.patchdim**2,self.basis_no))
+        for ii in np.arange(self.basis_no):
+            proj_basis_tmp = self.proj_basis(ii)
+            proj_basis_tmp = np.asarray(proj_basis_tmp)
+            proj_basis = T.set_subtensor(proj_basis[:,ii],proj_basis_tmp.flatten())
+        
+        tmp = (var1 - proj_basis.dot(coeff))**2
         tmp = 0.5*tmp.sum(axis=0)
         tmp = tmp.mean()
         sparsity = self.lam * T.abs_(coeff).sum(axis=0).mean()
@@ -79,41 +109,43 @@ class LBFGS_SC:
         print np.sum(np.abs(self.coeff))
         return res.x 
 
-    def load_new_batch(self,data,X,Y):
-        #Update self.data to have new data
-        self.data.set_value(data.astype('float32'))
-        self.X.set_value(X.astype('float32'))
-        self.Y.set_value(Y.astype('float32'))
+    def new_sample(self):
+        #Update New Random Idx
+        rand_idx = np.random.randint(0,200)
+        self.rand_idx.set_value(rand_idx)
         return
 
-    def set_proj_matrix(self,angle):
+    def new_proj_matrix(self):
+        angle = 60*np.random.rand() -30
         self.proj_matrix[0,0].set_value(np.cos(np.deg2rad(angle)))
         self.proj_matrix[0,2].set_value(np.sin(np.deg2rad(angle)))
         self.proj_matrix[1,1].set_value(1.0)
         self.proj_matrix[2,0].set_value(-np.sin(np.deg2rad(angle)))
         self.proj_matrix[2,2].set_value(np.cos(np.deg2rad(angle)))
-
         return
 
-    def create_proj_matrix(self):
-        #Input parameter is the angle and data that we want to do projections on
-        #angle_f64 = T.scalar('angle_f64')
-        #angle = T.cast(angle_f64,'uint8')
-        input_f64  = T.dmatrix('input')
-        input_for_transform = T.cast(input_f64,'float32')
+    def load_all_data(self,X,Y,data):
+        self.X.set_value(X.astype('float32'))
+        self.Y.set_value(Y.astype('float32'))
+        self.data.set_value(data.astype('float32'))
+        return
 
+    def create_proj_data_matrix(self):
+        #Input parameter is the data that we want to do projections on
+        idx_64 = T.scalar('dtype_flag')
+        idx = T.cast(idx_64,'uint8')
+        #check what type of data it is -- data or basis?
+        input_T = self.data[:,idx]
         #We then Compute Transformation
-        all_vertices = [self.X,self.Y,input_for_transform]
+        all_vertices = T.stack([self.X[:,0],self.Y[:,0],input_T])
         transformed_input = self.proj_matrix.dot(all_vertices)
         X= transformed_input[0,:]
         Y= transformed_input[1,:]
         Z= transformed_input[2,:]
-
         #We then compute 3D to 2D Image (Pulkit's code goes here)
 	#Add to Z so things are a little far away
         #Shift data so it scales well
-	Z      = Z - T.min(Z) + 1000.0
-
+	Z = Z - T.min(Z) + 1000.0
 	#Get the perspective (x,y) coordinates
 	x    = X/Z
 	y    = Y/Z
@@ -122,33 +154,56 @@ class LBFGS_SC:
 	mnY, mxY = T.min(y), T.max(y)
 	mn       = T.min((mnX, mnY))
 	mx       = T.max((mxX, mxY))
-
-        #Write my own binning code because fucking Theano can't do this right
-	#bins     = np.linspace(mn, mx, self.patchdim)
-        #bins     = bins.flatten()
-        bins= T.arange(mn,mx,(mx-mn)/self.patchdim)
-
 	#Create the image
-	im  = np.zeros((self.patchdim, self.patchdim))
-	xFlat, yFlat, ZFlat = x.flatten(), y.flatten(), Z.flatten()
-	count = 0
-	for (xv, yv) in zip(xFlat, yFlat):
-		bx = find_bins(xv, bins)
-		by = find_bins(yv, bins)
-		im[by, bx] = ZFlat[count]
-		count      += 1
-
+	im  = T.zeros((self.patchdim, self.patchdim))
+        new_x = (self.patchdim -1.0)*(x - mn)/(mx-mn)
+        new_y = (self.patchdim -1.0)*(y - mn)/(mx-mn)
+        im=T.set_subtensor(im[new_y.astype('uint8'),new_x.astype('uint8')], Z)
         #We return projected input
-        f = theano.function([angle_f64,input_f64],[im.astype('float32')],updates=updates)
+        f = theano.function([idx_64],[im.astype('float32')])
         #Create theano function
+        return f
 
+
+    def create_proj_basis_matrix(self):
+        #Input parameter is the data that we want to do projections on
+        idx_64 = T.scalar('dtype_flag')
+        idx = T.cast(idx_64,'uint8')
+        #check what type of data it is -- data or basis?
+        input_T = self.basis[:,idx]
+        #We then Compute Transformation
+        all_vertices = T.stack([self.X[:,0],self.Y[:,0],input_T])
+        transformed_input = self.proj_matrix.dot(all_vertices)
+        X= transformed_input[0,:]
+        Y= transformed_input[1,:]
+        Z= transformed_input[2,:]
+        #We then compute 3D to 2D Image (Pulkit's code goes here)
+	#Add to Z so things are a little far away
+        #Shift data so it scales well
+	Z = Z - T.min(Z) + 1000.0
+	#Get the perspective (x,y) coordinates
+	x    = X/Z
+	y    = Y/Z
+	#Create the image bins location
+	mnX, mxX = T.min(x), T.max(x)
+	mnY, mxY = T.min(y), T.max(y)
+	mn       = T.min((mnX, mnY))
+	mx       = T.max((mxX, mxY))
+	#Create the image
+	im  = T.zeros((self.patchdim, self.patchdim))
+        new_x = (self.patchdim -1.0)*(x - mn)/(mx-mn)
+        new_y = (self.patchdim -1.0)*(y - mn)/(mx-mn)
+        im=T.set_subtensor(im[new_y.astype('uint8'),new_x.astype('uint8')], Z)
+        #We return projected input
+        f = theano.function([idx_64],[im.flatten().astype('float32')])
+        #Create theano function
         return f
 
     def create_update_basis(self):
         coeff_f64 = T.dmatrix('coeff')
         coeff = T.cast(coeff_f64,'float32')
         #Update basis with the right update steps
-        Residual = self.data - self.basis.dot(coeff)
+        Residual = (self.data) - self.basis.dot(coeff)
         dbasis = self.LR * Residual.dot(coeff.T)
         basis = self.basis + dbasis
         #Normalize basis
@@ -163,6 +218,39 @@ class LBFGS_SC:
         Residual = tmp.mean()
         num_on = (T.abs_(coeff)>0).sum().astype('float32')/float(self.basis_no*self.batch)
         f = theano.function([coeff_f64],[Residual.astype('float32'),num_on], updates=updates)
+        return f 
+
+
+    def create_update_proj_basis(self):
+        #coeff_f64 = T.dmatrix('coeff')
+        #coeff = T.cast(coeff_f64,'float32')
+        #Update basis with the right update steps
+        var1 = self.proj_data(0)
+        proj_basis = T.zeros((self.patchdim**2,self.basis_no))
+        for ii in np.arange(self.basis_no):
+            proj_basis_tmp = self.proj_basis(ii)
+            proj_basis_tmp = np.asarray(proj_basis_tmp)
+            proj_basis = T.set_subtensor(proj_basis[:,ii],proj_basis_tmp.flatten())
+
+        Residual = var1 - proj_basis.dot(self.coeff)
+        tmp = Residual**2
+        tmp = 0.5*tmp.sum(axis=0)
+        tmp = tmp.mean()
+        sparsity = self.lam * T.abs_(self.coeff).sum(axis=0).mean()
+        obj = tmp + sparsity
+        #Compute gradient here
+        dbasis = T.grad(obj,self.basis)
+        basis = self.basis + self.LR*dbasis
+        #Normalize basis
+        norm_basis = basis**2
+        norm_basis = norm_basis.sum(axis=0)
+        norm_basis = T.sqrt(norm_basis)
+        norm_basis = T.nlinalg.diag(1.0/norm_basis)
+        basis = basis.dot(norm_basis)
+        updates = {self.basis: basis}
+        Residual = tmp.mean()
+        num_on = (T.abs_(coeff)>0).sum().astype('float32')/float(self.basis_no*self.batch)
+        f = theano.function([],[Residual.astype('float32'),num_on], updates=updates)
         return f 
 
     def visualize_basis(self,iteration,image_shape=None):

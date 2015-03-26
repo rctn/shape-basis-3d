@@ -2,13 +2,11 @@ import numpy as np
 from scipy.optimize import minimize
 import theano 
 from theano import tensor as T
-import pylearn2
 import pdb
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import os
-
 
 class LBFGS_SC:
 
@@ -37,7 +35,8 @@ class LBFGS_SC:
             self.savepath = os.getcwd() 
         else:
             self.savepath = savepath
-        self.data = np.random.randn(self.patchdim**2,self.batch).astype('float32')
+        self.data = np.random.randn(self.patchdim**2,200).astype('float32')
+        
         self.basis = np.random.randn(self.patchdim**2,self.basis_no).astype('float32')
         self.data = theano.shared(self.data)
         self.basis = theano.shared(self.basis)
@@ -70,36 +69,27 @@ class LBFGS_SC:
         print np.sum(np.abs(self.coeff))
         return res.x 
 
-    def load_new_batch(self,data):
+    def load_new_batch(self,X,Y,data):
         #Update self.data to have new data
         self.data.set_value(data.astype('float32'))
         return
-    
+   
         
 
     def create_update_basis(self):
         coeff_f64 = T.dmatrix('coeff')
         coeff = T.cast(coeff_f64,'float32')
-        #coeff = T.reshape(coeff,[self.basis_no,self.batch])
-        
-        #basis = self.basis.get_value()
-        #data = self.data.get_value()
         #Update basis with the right update steps
         Residual = self.data - self.basis.dot(coeff)
         dbasis = self.LR * Residual.dot(coeff.T)
         basis = self.basis + dbasis
         #Normalize basis
-        #norm_basis = np.diag(1/np.sqrt(np.sum(self.basis**2,axis=0)))
-        #self.basis = np.dot(self.basis,norm_basis)
         norm_basis = basis**2
         norm_basis = norm_basis.sum(axis=0)
         norm_basis = T.sqrt(norm_basis)
         norm_basis = T.nlinalg.diag(1.0/norm_basis)
         basis = basis.dot(norm_basis)
         updates = {self.basis: basis}
-        #self.basis.set_value(self.basis)
-        #self.basis.set_value(basis.astype('float32'))
-        #self.basis=np.asarray(self.basis)
         #Residual= np.mean(np.sqrt(np.sum(Residual**2,axis=0)))
         tmp = Residual**2
         tmp = 0.5*tmp.sum(axis=0)
