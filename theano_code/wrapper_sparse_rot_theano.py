@@ -25,15 +25,15 @@ if __name__ == "__main__":
     path= proj_path + 'matfiles/*'
 
     #Inference Variables
-    LR = 0.05
+    LR = 0.1
     #eta = 0.1
     training_iter = 3000
     #InferIter = 300
     #lamb=0.05
-    lam = 0.05
+    lam = 0.001
     #adapt = .9
     patchdim = 512
-    batch = 1 
+    batch = 185 
     basis_no =50
     basis = np.zeros([patchdim**2,basis_no])
     coeff = np.random.randn(batch,basis_no)
@@ -54,7 +54,7 @@ if __name__ == "__main__":
             #shapes.append(geometry)
             shapes[ii,:] = actual_geometry.flatten()
         except:
-            pdb.set_trace()
+            ipdb.set_trace()
     print('Successfully loaded')
     vertices = matfile['vertices']
     X=np.reshape(vertices[:,0],[patchdim,patchdim])
@@ -80,8 +80,7 @@ if __name__ == "__main__":
     lbfgs_sc = sparse_code_rot_gpu.LBFGS_SC(LR=LR,lam=lam,batch=batch,basis_no=basis_no,patchdim=patchdim,savepath=matfile_write_path)
     residual_list=[]
     gen_rand_ind = np.random.randint(0,shapes_whitened.shape[0],size=batch)
-    data = shapes_whitened[gen_rand_ind,:].T
-    ipdb.set_trace()
+    data = shapes_whitened[0:batch,:].T
     lbfgs_sc.load_all_data(X,Y,data)
     for ii in np.arange(training_iter):
     #Make data
@@ -97,7 +96,7 @@ if __name__ == "__main__":
         tm4 = time.time()
         coeff = lbfgs_sc.coeff
         coeff = coeff.astype('float32')
-        res,sparsity = lbfgs_sc.update_basis(coeff)
+        res,sparsity = lbfgs_sc.update_basis()
         residual_list.append(res)
         tm5 = time.time()    
         print('Temporary data variable Cost in seconds', tm2-tm1)

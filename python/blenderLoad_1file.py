@@ -9,12 +9,18 @@ import random
 import pdb
 import os
 
-jubf234=scio.loadmat('/media/mudigonda/Gondor/Data/3dFace/matfiles/ADCM370.mat')
+jubf234=scio.loadmat('/media/mudigonda/Gondor/Data/3dFace/shape_basis/PCA/split_mat/mean_face_render.mat')
 
 faces=jubf234['faces']
 faces = faces-1
 vertices=jubf234['vertices']
-texture=jubf234['texture']
+texture_flag = 0
+
+try:
+    texture=jubf234['texture']
+    texture_flag = 1
+except:
+    print('No texture detected, so we wont be rendering that')
 
 for object in bpy.data.objects:
     if object.name != 'Lamp' and object.name !='Camera':
@@ -52,26 +58,28 @@ scene = bpy.context.scene
 scene.objects.link(obj)
 
 
-vertex_colors = mesh_3d.vertex_colors
+if texture_flag==1:
 
-if len(vertex_colors)==0:
-   vertex_colors.new()
-
-color_layer = vertex_colors['Col']
-i = 0
-non_zero = np.nonzero(texture)
-
-
-face_flat = faces.flatten()
-for ii in range(face_flat.shape[0]):
-   color_layer.data[ii].color = list(texture[face_flat[ii],:]/255.0)
-
-mat = bpy.data.materials.new('vertex_material')
-mat.use_vertex_color_paint = True
-mat.use_vertex_color_light = True
-mesh_3d.materials.append(mat)
-
-
+    vertex_colors = mesh_3d.vertex_colors
+    
+    if len(vertex_colors)==0:
+       vertex_colors.new()
+    
+    color_layer = vertex_colors['Col']
+    i = 0
+    non_zero = np.nonzero(texture)
+    
+    
+    face_flat = faces.flatten()
+    for ii in range(face_flat.shape[0]):
+       color_layer.data[ii].color = list(texture[face_flat[ii],:]/255.0)
+    
+    mat = bpy.data.materials.new('vertex_material')
+    mat.use_vertex_color_paint = True
+    mat.use_vertex_color_light = True
+    mesh_3d.materials.append(mat)
+    
+    
 #Experimenting with trying to set active object, seems more or less useless or a duplicate of the previous statements
 for object in bpy.data.objects:
     if object.name != 'Lamp' and object.name !='Camera':

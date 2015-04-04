@@ -1,6 +1,6 @@
 import numpy as np 
 import scipy.io as sio
-import pdb
+import ipdb
 
 def load_data(fName):
 	dat   = sio.loadmat(fName)
@@ -20,15 +20,16 @@ def find_bins(x, bins):
 	return np.where(bins >= x)[0][0]
 
 
-def make_im(X, Y, Z, imSz=256):
+def make_im(X, Y, Z, imSz=128):
 	'''
 		Renders the image when X,Y,Z coordinates are provided
 	'''
 	#Add to Z so things are a little far away
-	#ignoreIdx = (Z<=5.0).flatten()
+        shift = 100.0
+        scale = 1.0
 	minZ   = np.min(Z)
-	Z      = Z - np.min(Z) + 1000.0
-	nr, nc = Z.shape
+	print np.min(Z), np.max(Z)
+	Z      = (Z - np.min(Z) + shift)
 	print np.min(Z), np.max(Z)
 
 	#Get the perspective (x,y) coordinates
@@ -58,9 +59,37 @@ def make_im(X, Y, Z, imSz=256):
 		by = find_bins(yv, bins)
 		im[by, bx] = ZFlat[count]
 		count      += 1
-	
+        
+        #Scale all the values that are over the shift by a factor of 100?
+        im[im>shift] = im[im>shift]+scale
+
 	return im
 
+def make_im_noloop(X,Y,Z, imSz =100):
+    X = X.flatten()
+    Y = Y.flatten()
+    Z = Z.flatten()
+
+    Z = Z - Z.min() + 200.0
+    x = X/Z
+    y = Y/Z
+
+    mnX, mxX =  x.min(), x.max()
+    mnY, mxY =  y.min(), y.max()
+    mn = np.min((mnX, mnY))
+    mx = np.max((mxX, mxY))
+
+    im = np.zeros((binSz,binSz))
+    new_x = (binSz-1)*(x - mn)/(mx-mn)
+    new_y = (binSz-1)*(y - mn)/(mx-mn)
+    '''
+    for ii in np.arange(x.shape[0]):
+        im[new_x[ii],new_y[ii]] = Z[ii]
+    '''
+    #lin_idx = new_x*binSz + new_y
+    #im[lin_idx.astype('uint8')] = Z
+    im[new_y.astype('uint8'),new_x.astype('uint8')] = Z 
+    return im
 
 def render_im(vertices, texture, imSz=256):
 	'''

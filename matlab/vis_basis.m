@@ -1,18 +1,19 @@
-%%Local visualizations for sparse basis
+%Function that takes a basis.mat file
+%Converts from cylindrical coordinate spaces to X,Y,Z
+%In addition, also create faces (triangulation)
+%Saves it out
+function [vertices,faces,geometry,texture] = vis_basis(fname,savepath) 
+%Get data
+DATA=getenv('DATA');
 
-function [f] = vis_basis(basis,vis_size)
+%Load Geometry
+loadmat(strcat(DATA,'3dFace/shape_basis/PCA/basis.mat'))
 
-if nargin<2
-    vis_size = [size(basis,2)/10,10]
-end
+%Convert Mean Face
+[vertices]=cybconvert(geometry);
+[faces,vertices]=surf2patch(vertices(:,:,1),vertices(:,:,2),vertices(:,:,3),'triangles');
 
-
-for ii = 1:vis_size(1)
-    for jj =1:vis_size(2)
-        tmp = reshape(basis(:,ii*vis_size(1)+jj),[512,512]);
-        subplot(vis_size(1),vis_size(2),ii*vis_size(2)+jj);
-        imshow(tmp)
-    end
-end
+output_path='/media/mudigonda/Gondor/Data/3dFace/matfiles/';
+save(strcat(output_path,fname));
 
 end

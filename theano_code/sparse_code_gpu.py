@@ -2,7 +2,8 @@ import numpy as np
 from scipy.optimize import minimize
 import theano 
 from theano import tensor as T
-import pdb
+import ipdb
+import pcd2im
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -35,13 +36,13 @@ class LBFGS_SC:
             self.savepath = os.getcwd() 
         else:
             self.savepath = savepath
-        self.data = np.random.randn(self.patchdim**2,200).astype('float32')
-        
-        self.basis = np.random.randn(self.patchdim**2,self.basis_no).astype('float32')
+        self.data = np.random.randn(self.patchdim[0]*self.patchdim[1],200).astype('float32')
+        self.coeff = np.random.randn(self.basis_no,self.batch).astype('float32') 
+        self.basis = np.random.randn(self.patchdim[0]*self.patchdim[1],self.basis_no).astype('float32')
+        self.coeff = theano.shared(self.coeff)
         self.data = theano.shared(self.data)
         self.basis = theano.shared(self.basis)
         self.residual = [] 
-        #self.residual = theano.shared(self.residual)
         print('Compiling theano function')
         self.f = self.create_theano_fn()
         self.update_basis = self.create_update_basis()
@@ -65,11 +66,14 @@ class LBFGS_SC:
         init_coeff = np.zeros(self.basis_no*self.batch).astype('float32')
         #print(self.f(self.coeff))
         res = minimize(fun=self.f,x0=init_coeff,method='L-BFGS-B',jac=True,options={'disp':False})
-        self.coeff = np.reshape(res.x,[self.basis_no,self.batch])
-        print np.sum(np.abs(self.coeff))
-        return res.x 
+        self.coeff.set_value(np.reshape(res.x,[self.basis_no,self.batch]).astype('float32'))
+        print('Value of objective fun after doing inference',res.fun)
+        active = len(res.x[np.abs(res.x)>1e-2])/float(self.basis_no*self.batch)
+        #active = (np.abs(res.x).sum())/float(self.basis_no*self.batch)
+        print('Number of Active coefficients is ...',active)
+        return active,res.fun 
 
-    def load_new_batch(self,X,Y,data):
+    def load_data(self,data):
         #Update self.data to have new data
         self.data.set_value(data.astype('float32'))
         return
@@ -77,11 +81,13 @@ class LBFGS_SC:
         
 
     def create_update_basis(self):
-        coeff_f64 = T.dmatrix('coeff')
-        coeff = T.cast(coeff_f64,'float32')
+        basis_flat = T.dvector('basis')
+        basis = T.cast(basis_flat,'float32')
+        basis = T.reshape(basis,[self.patchdim[0]*self.patchdim[1],self.basis_no])
         #Update basis with the right update steps
-        Residual = self.data - self.basis.dot(coeff)
-        dbasis = self.LR * Residual.dot(coeff.T)
+        Residual = self.data - basis.dot(self.coeff)
+        '''
+        dbasis = self.LR * Residual.dot(self.coeff.T)
         basis = self.basis + dbasis
         #Normalize basis
         norm_basis = basis**2
@@ -90,13 +96,26 @@ class LBFGS_SC:
         norm_basis = T.nlinalg.diag(1.0/norm_basis)
         basis = basis.dot(norm_basis)
         updates = {self.basis: basis}
-        #Residual= np.mean(np.sqrt(np.sum(Residual**2,axis=0)))
+        '''
         tmp = Residual**2
         tmp = 0.5*tmp.sum(axis=0)
         Residual = tmp.mean()
-        num_on = (T.abs_(coeff)>0).sum().astype('float32')/float(self.basis_no*self.batch)
-        f = theano.function([coeff_f64],[Residual.astype('float32'),num_on], updates=updates)
+        grads = T.grad(Residual,basis_flat)
+        #num_on = T.abs_(self.coeff).sum().astype('float32')/float(self.basis_no*self.batch)
+        #f = theano.function([],[Residual.astype('float32'),num_on], updates=updates)
+        f = theano.function([basis_flat],[Residual.astype('float64'),grads.astype('float64')] )
         return f 
+
+    def update_basis_wrapper(self):
+        init_basis = np.random.randn(self.patchdim[0]*self.patchdim[1]*self.basis_no)
+        res = minimize(fun=self.update_basis,x0=init_basis,method='L-BFGS-B',jac=True,options={'disp':False})
+        #Normalize stuff here
+        basis = np.reshape(res.x,[self.patchdim[0]*self.patchdim[1],self.basis_no]) 
+        norm_basis = np.diag(1.0/np.sqrt(np.sum(basis**2,axis=0)))
+        basis = np.dot(basis,norm_basis)
+        self.basis.set_value(np.reshape(res.x,[self.patchdim[0]*self.patchdim[1],self.basis_no]).astype('float32'))
+        print('value of Objective function after updating basis is ',res.fun)
+        return res.fun 
 
     def visualize_basis(self,iteration,image_shape=None):
         #Use function we wrote previously
@@ -108,10 +127,12 @@ class LBFGS_SC:
             for jj in np.arange(ax.shape[1]):
                 tmp = self.basis.get_value()
                 tmp = tmp[:,ii*ax.shape[1]+jj]
-                im = tmp.reshape([self.patchdim,self.patchdim])
+                im = tmp.reshape([self.patchdim[0],self.patchdim[1]])
                 im = im
                 ax[ii,jj].imshow(im)
-        savepath_image=self.savepath + '_iterations_' + str(iteration) + '_visualize_.png'
+        savepath_image= '_iterations_' + str(iteration) + '_visualize_.png'
         f.savefig(savepath_image)
+        f.clf()
+        plt.close()
         return
 
