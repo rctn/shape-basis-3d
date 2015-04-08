@@ -24,9 +24,18 @@ end
 
 %Load the filename
 try
-	load(strcat(fname,'.mat'))
+	load(strcat(fname,'basis.mat'))
 catch
 	disp('Could not load the file name')
+	return
+end
+
+%Change Directory
+try
+	cd(fname)
+catch
+	disp('Could not change directory to DATA folders')
+	disp(fname)
 	return
 end
 
@@ -52,14 +61,19 @@ for ii=1:no_basis
 		Z = reshape(sparse_shape_basis(:,ii),shape1,shape2);
 	else
 		Z = reshape(shape_eig_vectors_face(ii,:),shape1,shape2);
+		Z = Z *(1/(sqrt(shape_eig_vals(ii))));
 	end
-% 	Z = Z *(1/sqrt(shape_eig_vals(ii)));
 	[faces,vertices] = surf2patch(reshape(X,shape1,shape2),reshape(Y,shape1,shape2),Z,'triangles');
 	if add_mean==1
 		Z = Z + reshaped_mean;
 	end
-	[faces,vertices] = surf2patch(reshape(X,shape1,shape2),reshape(Y,shape1,shape2),Z,'triangles');
-	save(strcat('Sparse_basis_',int2str(ii)),'faces','vertices');
+	for jj=-0.75:.01:0.75
+		Z_new = Z*jj;
+		sprintf('Value of jj is -- %f',jj)
+		[faces,vertices] = surf2patch(reshape(X,shape1,shape2),reshape(Y,shape1,shape2),Z_new,'triangles');
+		save(strcat('Sparse_basis_',int2str(ii),'_scale_',int2str(jj*100)),'faces','vertices');
+		%save(strcat('Sparse_basis_',int2str(ii)),'faces','vertices');
+	end
 end
 
 end

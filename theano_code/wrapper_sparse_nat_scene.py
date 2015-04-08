@@ -49,65 +49,32 @@ if __name__ == "__main__":
 
     #Environment Variables
     DATA = os.getenv('DATA')
-    proj_path = DATA + '3dFace/'
-    write_path = proj_path + 'shape_basis/sparse/'
-    path= proj_path + 'matfiles/*'
+    data_path = DATA + 'scene-sparse/'
+    write_path = DATA + '3dFace/shape_basis/sparse/nat_scene'
+    IMAGES = scio.loadmat(data_path+'IMAGES.mat')
+    IMAGES = IMAGES['IMAGES']
+
+    (imsize, imsize, num_images) = np.shape(IMAGES)
+
 
     #Inference Variables
-    LR = 0.25
+    LR = 0.2
+    training_iter = 10000 
+    lam = 0.15
     step = 0.05
-    training_iter = 3000 
-    lam = 0.25 
+    border = 4
     orig_patchdim = 512
-    rows_range,cols_range = np.meshgrid(np.arange(156,512-156),np.arange(156,512-156),indexing='ij')
-    patchdim = np.asarray([0,0])
-    patchdim[0] = rows_range.shape[0]
-    patchdim[1] = cols_range.shape[1]
+    patchdim = np.zeros(2)
+    patchdim[0] = 8
+    patchdim[1] = 8
     print('patchdim is ---',patchdim)
-    batch = 200 
+    sz = 8 
+    batch = 100
     test_batch = 15
-    basis_no =50
-    matfile_write_path = write_path+'Faces_LR_'+str(LR)+'_batch_'+str(batch)+'_basis_no_'+str(basis_no)+'_lam_'+str(lam)+'_basis'
+    basis_no = 4*(8**2)
+    data = np.zeros((patchdim[0]*patchdim[1],batch))
+    matfile_write_path = write_path+'LR_'+str(LR)+'_batch_'+str(batch)+'_basis_no_'+str(basis_no)+'_lam_'+str(lam)+'_basis'
 
-    #list all files in the directory above
-    print('The path for glob search is', path)
-    matfiles=glob.glob(path)
-    print('Total number of mat files  is %d',len(matfiles))
-    shapes= np.zeros([len(matfiles),patchdim[0]*patchdim[1]])
-    for ii in range(len(matfiles)):
-        if np.mod(ii,10)==0:
-            print('Files Loaded --- ',ii)
-        matfile = scio.loadmat(matfiles[ii])
-        geometry = matfile['vertices']
-        actual_geometry = np.reshape(geometry[:,2],[orig_patchdim,orig_patchdim])
-        actual_geometry = actual_geometry[rows_range,cols_range]
-        try:
-            #shapes.append(geometry)
-            shapes[ii,:] = actual_geometry.flatten()
-        except:
-            pdb.set_trace()
-    print('Successfully loaded')
-    vertices = matfile['vertices']
-    X=np.reshape(vertices[:,0],[orig_patchdim,orig_patchdim])
-    Y=np.reshape(vertices[:,1],[orig_patchdim,orig_patchdim])
-    X=X[rows_range,cols_range]
-    Y=Y[rows_range,cols_range]
-    #Compute Mean Face
-    mean_face = np.mean(shapes,axis=0)
-    #Now let's try doing PCA
-    print('Compute Covariance Matrix')
-    shapes_subtr_mean_face = shapes - mean_face
-    shapes_cov = np.cov(shapes_subtr_mean_face)
-    print('Compute Eigen Vectors')
-    [d,V] = np.linalg.eigh(shapes_cov)
-    fudge = 1e-6 
-    #Scaling variance matrix
-    D = np.diag(1 / np.sqrt(d + fudge))
-    #Whitening matrix
-    W = np.dot(np.dot(V,D),V.T)
-    print('Shape of W ',W.shape)
-    #Whitened Shape
-    shapes_whitened = np.dot(W,shapes_subtr_mean_face)
     
     #Making and Changing directory
     try:
@@ -125,67 +92,66 @@ if __name__ == "__main__":
 
     #Create object
     lbfgs_sc = sparse_code_gpu.LBFGS_SC(LR=LR,lam=lam,batch=batch,basis_no=basis_no,patchdim=patchdim,savepath=matfile_write_path)
-    #gen_rand_ind = np.random.randint(0,shapes_whitened.shape[0],size=batch)
-    data = shapes_whitened[0:batch,:].T 
-    lbfgs_sc.load_data(data)
     residual_list=[]
     sparsity_list=[]
     avg_r_error = []
-    print('Compiling Inference function locally')
-    infer_func_hndl = create_theano_fn(patchdim,lam,basis_no,test_batch)
+    #print('Compiling Inference function locally')
+    #infer_func_hndl = create_theano_fn(patchdim,lam,basis_no,test_batch)
     for ii in np.arange(training_iter):
-        if np.mod(ii,5)==0:
-            print('*****************Adjusting Learning Rate*******************')
-            LR = LR - step
-            step  = step*0.5
-            print('New Learning Rate is .........',LR)
-            lbfgs_sc.adjust_LR(LR)
-    #Make data
+    # Choose a random image
+        imi = np.ceil(num_images * np.random.uniform(0, 1))
+
+        for i in range(batch):
+            r = border + np.ceil((imsize-sz-2*border) * np.random.uniform(0, 1))
+            c = border + np.ceil((imsize-sz-2*border) * np.random.uniform(0, 1))
+
+            data[:,i] = np.reshape(IMAGES[r:r+patchdim[0], c:c+patchdim[1], imi-1], patchdim[0]*patchdim[1], 1)
+            #Make data
         print('Training iteration -- ',ii)
+        if np.mod(ii,100)==0:
+            print('*****************Modifying LR so our model converges**************************')
+            LR = LR - step
+            print('New Value of LR is ', LR)
+            step = step*0.5
+            lbfgs_sc.adjust_LR(LR)
+        lbfgs_sc.load_data(data)
         #Note this way, each column is a data vector
         tm3 = time.time()
-        active_infer,result = lbfgs_sc.infer_coeff()
-        sparsity_list.append(active_infer)
+        active,result = lbfgs_sc.infer_coeff()
+        print('Value of  Objective function after Inference ---',result)
+        print('Number of active coefficients after Inference ---',active)
+        sparsity_list.append(active)
         tm4 = time.time()
         residual,active=lbfgs_sc.update_basis()
+        print('Value of Residual after Updating basis ---',residual)
+        print('Value of active coefficients after updating basis ---', active)
         residual_list.append(residual)
         tm5 = time.time()    
         print('Infer coefficients cost in seconds', tm4-tm3)
-        print('The value of active coefficients after we do inference ', active_infer)
-        print('The value of objective function after we do inference ...',result)
-        print('The value of residual after we do learning ....', residual)
-        print('The value of active coefficients after we do learning ....',active)
         print('Updating basis cost in seconds',tm5-tm4)
         #residual_list.append(residual)
-        if np.mod(ii,10)==0:
+        if np.mod(ii,100)==0:
             print('Saving the basis now, for iteration ',ii)
             shape_basis = {
-            'mean_face': mean_face,
-            'shapes_subtr_mean_face':shapes_subtr_mean_face,
             'sparse_shape_basis': lbfgs_sc.basis.get_value(),
             'residuals':residual_list,
             'sparsity':sparsity_list,
-            'whitening_matrix': W,
-            'vertices':vertices,
-            'X':X,
-            'Y':Y,
-            'avg_r_error':avg_r_error
             }
             scio.savemat('basis',shape_basis)
             print('Saving basis visualizations now')
-            lbfgs_sc.visualize_basis(ii,[10,5])
+            lbfgs_sc.visualize_basis(ii)
             print('Visualizations done....back to work now')
         '''
         if np.mod(ii,5)==0:
             print('testing out test error')
             data = shapes_whitened[batch:,:].T
-	    print('Moving Basis from GPU to CPU')
+            print('Moving Basis from GPU to CPU')
             tm1 = time.time()
             basis = lbfgs_sc.basis.get_value()
             tm2 = time.time()
             print('Getting basis costed ', tm2-tm1)
-	    print('Calling Inference')
-	    coeff = infer_coeff(infer_func_hndl,data,basis,basis_no,test_batch)
+            print('Calling Inference')
+            coeff = infer_coeff(infer_func_hndl,data,basis,basis_no,test_batch)
             coeff = np.reshape(coeff,[basis_no,test_batch])
             residual = data - basis.dot(coeff)
             residual = residual**2

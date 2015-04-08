@@ -12,6 +12,7 @@ lam = 0.01
 
 fname = 'LR_'+str(LR) + '_batch_' + str(batch) + '_basis_no_' + str(basis_no) + '_lam_' + str(lam) + '_basis'
 
+version = 0.001 
 
 if FLAG==0:
     files = glob.glob('/media/mudigonda/Gondor/Data/3dFace/shape_basis/PCA/split_mat/*')
@@ -22,7 +23,7 @@ if FLAG==0:
     for ii in range(len(files)):
         print('Visualizing Eigen Head -------'+ str(ii))
         #BL.load_face(mean_vertices,files[ii],savepath+'Eig_Face_'+str(ii)+'.png')
-        BL.load_face(files[ii],savepath+'Eig_Face_'+str(ii)+'.png')
+        BL.load_face(files[ii],savepath+files[ii].split('/')[-1]+'.png')
 
     print('All Eig Faces Visualized')
 

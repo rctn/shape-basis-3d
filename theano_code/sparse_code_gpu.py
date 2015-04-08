@@ -3,10 +3,10 @@ from scipy.optimize import minimize
 import theano 
 from theano import tensor as T
 import ipdb
-import pcd2im
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+from matplotlib import cm
 import os
 
 class LBFGS_SC:
@@ -36,7 +36,7 @@ class LBFGS_SC:
             self.savepath = os.getcwd() 
         else:
             self.savepath = savepath
-        self.data = np.random.randn(self.patchdim[0]*self.patchdim[1],200).astype('float32')
+        self.data = np.random.randn(self.patchdim[0]*self.patchdim[1],self.batch).astype('float32')
         self.coeff = np.random.randn(self.basis_no,self.batch).astype('float32') 
         self.basis = np.random.randn(self.patchdim[0]*self.patchdim[1],self.basis_no).astype('float32')
         self.coeff = theano.shared(self.coeff)
@@ -78,15 +78,17 @@ class LBFGS_SC:
         self.data.set_value(data.astype('float32'))
         return
    
+    def adjust_LR(self,LR):
+        self.LR = LR
+        return
         
 
     def create_update_basis(self):
-        basis_flat = T.dvector('basis')
-        basis = T.cast(basis_flat,'float32')
-        basis = T.reshape(basis,[self.patchdim[0]*self.patchdim[1],self.basis_no])
+        #basis_flat = T.dvector('basis')
+        #basis = T.cast(basis_flat,'float32')
+        #basis = T.reshape(basis,[self.patchdim[0]*self.patchdim[1],self.basis_no])
         #Update basis with the right update steps
-        Residual = self.data - basis.dot(self.coeff)
-        '''
+        Residual = self.data - self.basis.dot(self.coeff)
         dbasis = self.LR * Residual.dot(self.coeff.T)
         basis = self.basis + dbasis
         #Normalize basis
@@ -96,14 +98,13 @@ class LBFGS_SC:
         norm_basis = T.nlinalg.diag(1.0/norm_basis)
         basis = basis.dot(norm_basis)
         updates = {self.basis: basis}
-        '''
         tmp = Residual**2
         tmp = 0.5*tmp.sum(axis=0)
         Residual = tmp.mean()
-        grads = T.grad(Residual,basis_flat)
-        #num_on = T.abs_(self.coeff).sum().astype('float32')/float(self.basis_no*self.batch)
-        #f = theano.function([],[Residual.astype('float32'),num_on], updates=updates)
-        f = theano.function([basis_flat],[Residual.astype('float64'),grads.astype('float64')] )
+        #grads = T.grad(Residual,basis_flat)
+        num_on = T.abs_(self.coeff).sum().astype('float32')/float(self.basis_no*self.batch)
+        f = theano.function([],[Residual.astype('float32'),num_on], updates=updates)
+        #f = theano.function([basis_flat],[Residual.astype('float64'),grads.astype('float64')] )
         return f 
 
     def update_basis_wrapper(self):
@@ -120,7 +121,7 @@ class LBFGS_SC:
     def visualize_basis(self,iteration,image_shape=None):
         #Use function we wrote previously
         if image_shape is None:
-            f, ax = plt.subplots(self.basis_no/10,10,sharex=True,sharey=True)
+            f, ax = plt.subplots(16,16,sharex=True,sharey=True)
         else:
             f, ax = plt.subplots(image_shape[0],image_shape[1],sharex=True,sharey=True)
         for ii in np.arange(ax.shape[0]):
@@ -128,8 +129,8 @@ class LBFGS_SC:
                 tmp = self.basis.get_value()
                 tmp = tmp[:,ii*ax.shape[1]+jj]
                 im = tmp.reshape([self.patchdim[0],self.patchdim[1]])
-                im = im
-                ax[ii,jj].imshow(im)
+                ax[ii,jj].imshow(im,cmap=cm.Greys_r,interpolation='nearest',aspect='equal')
+                ax[ii,jj].axis('off')
         savepath_image= '_iterations_' + str(iteration) + '_visualize_.png'
         f.savefig(savepath_image)
         f.clf()

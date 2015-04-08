@@ -59,6 +59,9 @@ class blenderLoad:
             mesh_3d.update()
             #creating a new object to link the object
             obj = bpy.data.objects.new("My_Object", mesh_3d)
+            dm = obj.modifiers.new('Decimate','DECIMATE')
+            dm.ratio = 0.5
+
             #we take the context
             scene = bpy.context.scene
             #link the object to the scene
@@ -119,7 +122,7 @@ class blenderLoad:
 
             #Turn off the shader so things don't seem so specular
             for item in bpy.data.materials:
-                item.use_shadeless=True
+                item.use_shadeless=False
 
             #Rendering file
             bpy.context.scene.render.resolution_x=512
