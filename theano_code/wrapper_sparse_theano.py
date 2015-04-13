@@ -54,10 +54,10 @@ if __name__ == "__main__":
     path= proj_path + 'matfiles/*'
 
     #Inference Variables
-    LR = 0.25
+    LR = 0.05
     step = 0.05
-    training_iter = 3000 
-    lam = 0.25 
+    training_iter = 10000 
+    lam = 0.35 
     orig_patchdim = 512
     rows_range,cols_range = np.meshgrid(np.arange(156,512-156),np.arange(156,512-156),indexing='ij')
     patchdim = np.asarray([0,0])
@@ -66,8 +66,8 @@ if __name__ == "__main__":
     print('patchdim is ---',patchdim)
     batch = 200 
     test_batch = 15
-    basis_no =50
-    matfile_write_path = write_path+'Faces_LR_'+str(LR)+'_batch_'+str(batch)+'_basis_no_'+str(basis_no)+'_lam_'+str(lam)+'_basis'
+    basis_no =20
+    matfile_write_path = write_path+'Faces_r_theta_LR_nowhiten_mean_subtr_'+str(LR)+'_batch_'+str(batch)+'_basis_no_'+str(basis_no)+'_lam_'+str(lam)+'_basis'
 
     #list all files in the directory above
     print('The path for glob search is', path)
@@ -78,8 +78,10 @@ if __name__ == "__main__":
         if np.mod(ii,10)==0:
             print('Files Loaded --- ',ii)
         matfile = scio.loadmat(matfiles[ii])
-        geometry = matfile['vertices']
-        actual_geometry = np.reshape(geometry[:,2],[orig_patchdim,orig_patchdim])
+        #geometry = matfile['vertices']
+        #actual_geometry = np.reshape(geometry[:,2],[orig_patchdim,orig_patchdim])
+        geometry = matfile['geometry']
+        actual_geometry = np.reshape(geometry,[orig_patchdim,orig_patchdim])
         actual_geometry = actual_geometry[rows_range,cols_range]
         try:
             #shapes.append(geometry)
@@ -126,7 +128,8 @@ if __name__ == "__main__":
     #Create object
     lbfgs_sc = sparse_code_gpu.LBFGS_SC(LR=LR,lam=lam,batch=batch,basis_no=basis_no,patchdim=patchdim,savepath=matfile_write_path)
     #gen_rand_ind = np.random.randint(0,shapes_whitened.shape[0],size=batch)
-    data = shapes_whitened[0:batch,:].T 
+    #data = shapes_whitened[0:batch,:].T
+    data = shapes_subtr_mean_face[0:batch,:].T
     lbfgs_sc.load_data(data)
     residual_list=[]
     sparsity_list=[]
@@ -134,12 +137,14 @@ if __name__ == "__main__":
     print('Compiling Inference function locally')
     infer_func_hndl = create_theano_fn(patchdim,lam,basis_no,test_batch)
     for ii in np.arange(training_iter):
+        
         if np.mod(ii,5)==0:
             print('*****************Adjusting Learning Rate*******************')
-            LR = LR - step
-            step  = step*0.5
+            LR = LR * 0.5 
+            #step  = step*0.75
             print('New Learning Rate is .........',LR)
             lbfgs_sc.adjust_LR(LR)
+        
     #Make data
         print('Training iteration -- ',ii)
         #Note this way, each column is a data vector
@@ -149,7 +154,7 @@ if __name__ == "__main__":
         tm4 = time.time()
         residual,active=lbfgs_sc.update_basis()
         residual_list.append(residual)
-        tm5 = time.time()    
+        tm5 = time.time()
         print('Infer coefficients cost in seconds', tm4-tm3)
         print('The value of active coefficients after we do inference ', active_infer)
         print('The value of objective function after we do inference ...',result)
@@ -173,7 +178,7 @@ if __name__ == "__main__":
             }
             scio.savemat('basis',shape_basis)
             print('Saving basis visualizations now')
-            lbfgs_sc.visualize_basis(ii,[10,5])
+            lbfgs_sc.visualize_basis(ii,[4,5])
             print('Visualizations done....back to work now')
         '''
         if np.mod(ii,5)==0:

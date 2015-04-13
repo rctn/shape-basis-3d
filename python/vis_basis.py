@@ -14,19 +14,17 @@ class blenderLoad:
         def __init__(self):
             return 
 
-        def load_face(self,fname,savepath):
+        def load_face(self,fname,savepath,texture_flag=0):
             jubf234=scio.loadmat(fname)
             try:
                 faces=jubf234['faces']
             except:
                 pdb.set_trace()
             faces = faces-1
-            texture_flag = 1
             vertices=jubf234['vertices']
-            #vertices[:,2] = vertices[:,2] + mean_vertices[:,2]
-            try:
+            if texture_flag == 1: 
                 texture=jubf234['texture']
-            except:
+            else:
                 print('No texture map detected. So going to render only shape info')
                 texture_flag = 0
 
@@ -59,8 +57,8 @@ class blenderLoad:
             mesh_3d.update()
             #creating a new object to link the object
             obj = bpy.data.objects.new("My_Object", mesh_3d)
-            dm = obj.modifiers.new('Decimate','DECIMATE')
-            dm.ratio = 0.5
+            #dm = obj.modifiers.new('Decimate','DECIMATE')
+            #dm.ratio = 0.5
 
             #we take the context
             scene = bpy.context.scene

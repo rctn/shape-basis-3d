@@ -4,7 +4,7 @@
 
 function [ret_flag] = make_mesh(fname,add_mean,no_basis,shape1,shape2,PCA_SPARSE)
 dbstop if error
-
+addpath(pwd)
 if nargin<2
 	add_mean=1
 end
@@ -60,20 +60,17 @@ for ii=1:no_basis
 	if PCA_SPARSE == 0
 		Z = reshape(sparse_shape_basis(:,ii),shape1,shape2);
 	else
-		Z = reshape(shape_eig_vectors_face(ii,:),shape1,shape2);
-		Z = Z *(1/(sqrt(shape_eig_vals(ii))));
+		Z = reshape(shape_eig_vectors_face(:,ii),shape1,shape2);
+		Z = Z * 1e9;
+		if add_mean==1
+			Z = Z + reshaped_mean;
+		end
+		radii = zeros(512,512);
+		radii(156:355,156:355) = Z';
+		vertices = cybconvert(radii);
 	end
-	[faces,vertices] = surf2patch(reshape(X,shape1,shape2),reshape(Y,shape1,shape2),Z,'triangles');
-	if add_mean==1
-		Z = Z + reshaped_mean;
-	end
-	for jj=-0.75:.01:0.75
-		Z_new = Z*jj;
-		sprintf('Value of jj is -- %f',jj)
-		[faces,vertices] = surf2patch(reshape(X,shape1,shape2),reshape(Y,shape1,shape2),Z_new,'triangles');
-		save(strcat('Sparse_basis_',int2str(ii),'_scale_',int2str(jj*100)),'faces','vertices');
-		%save(strcat('Sparse_basis_',int2str(ii)),'faces','vertices');
-	end
+	[faces,vertices] = surf2patch(vertices(:,:,1),vertices(:,:,2),vertices(:,:,3),'triangle');
+	save(strcat('Sparse_basis_',int2str(ii)),'faces','vertices');
 end
 
 end

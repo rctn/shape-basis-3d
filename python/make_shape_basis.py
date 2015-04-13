@@ -39,7 +39,40 @@ def my_pca(shapes):
     plt.legend('eigen value energy')
     eig_val_fig.savefig(write_path+'Eig_Value_Plot.png',bbox_inches='tight',pad_inches=0)
 
-    return shape_vals, shape_vectors_face 
+    return shape_vals, shape_vectors_face
+
+def r_error(data,basis):
+    #let's compute mean face
+    mean_face = np.mean(shapes,axis=0)
+    shapes_subtr_mean_face = shapes - mean_face
+    shape_coeff = np.dot(shapes_subtr_mean_face,basis)
+    reconstr = np.dot(shape_coeff,basis)
+    reconstr_error = np.linalg.norm(data - reconstr,axis=0)
+    return reconstr_error
+
+def my_pca_whole(shapes):
+    #Compute Mean Face
+    mean_face = np.mean(shapes,axis=0)
+    #Now let's try doing PCA
+    print('Compute Covariance Matrix')
+    shapes_subtr_mean_face = shapes - mean_face
+    #Does this on the dimension by dimension covariance matrix
+    shapes_cov = np.cov(shapes_subtr_mean_face.T)
+    print('Compute Eigen Vectors')
+    shape_vals,shape_vectors = eigs(shapes_cov,k=50,return_eigenvectors=True)
+    shape_vectors = np.real(shape_vectors)
+    #Now let's scale the Eigen Vectors back to original shape
+    eig_val_fig = plt.figure()
+    plt.plot(shape_vals)
+    plt.legend('eigen value energy')
+    eig_val_fig.savefig(write_path+'Eig_Value_Plot_Wholw.png',bbox_inches='tight',pad_inches=0)
+
+    #Scaling each eigen vector by the sqrt of it's eigen value so they are properly nomralized
+    print('Scaling Eigen vectors')
+    for ii in np.arange(50):
+        shape_vectors[:,ii] = (1/np.sqrt(shape_vals[ii]))*shape_vectors[:,ii]
+
+    return shape_vals,shape_vectors
 
 def sklearn_pca(shapes):
     pca =PCA(n_components=50,whiten=True)
@@ -72,8 +105,8 @@ def load_data():
         if np.mod(ii,10)==0:
             print('Files Loaded --- ',ii)
         matfile = scio.loadmat(matfiles[ii])
-        geometry = matfile['vertices']
-        actual_geometry = np.reshape(geometry[:,2],[512,512])
+        geometry = matfile['geometry']
+        actual_geometry = np.reshape(geometry,[512,512])
         actual_geometry = actual_geometry[rows_range,cols_range]
         try:
             #shapes.append(geometry)
@@ -97,9 +130,10 @@ def load_data():
 if __name__ == "__main__":
 
     shapes, X, Y, mean_face = load_data()
-    shape_vals, shape_vecs = my_pca(shapes)
-
-    #sklearn_pca(shapes)
+    shape_vals, shape_vecs = my_pca_whole(shapes)
+    r_error = r_error(shapes,shape_vecs)
+    print('The value of r_error is ', r_error)
+    #shape_vals, shape_vecs = sklearn_pca(shapes)
 
     print("saving Basis")
     shape_basis = {
@@ -111,7 +145,7 @@ if __name__ == "__main__":
     'shape_eig_vals':shape_vals,
     #'shape_eig_vectors':shape_vectors,
     'shape_eig_vectors_face':shape_vecs,
-    #'shapes':shapes
+    'shapes':shapes
     }
     scio.savemat(write_path+'basis.mat',shape_basis)
 
