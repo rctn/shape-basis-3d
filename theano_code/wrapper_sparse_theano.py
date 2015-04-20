@@ -45,6 +45,26 @@ def infer_coeff(func_hndl,data,basis,basis_no,batch):
     print('Number of Active coefficients is ...',active)
     return res.x 
 
+def norm_basis(data):
+    norm_data = np.diag(1.0/np.sqrt(np.sum(data**2,axis=1)))
+    data = np.dot(norm_data,data)
+    return data
+
+def compute_whitening(data):
+    shapes_cov = np.cov(data)
+    print('Compute Eigen Vectors')
+    [d,V] = np.linalg.eigh(shapes_cov)
+    fudge = 1e-3 
+    #Scaling variance matrix
+    D = np.diag(1 / np.sqrt(d + fudge))
+    #Whitening matrix
+    W = np.dot(np.dot(V,D),V.T)
+    print('Shape of W ',W.shape)
+    #Whitened Shape
+    shapes_whitened = np.dot(W,data)
+
+    return shapes_whitened,W
+
 if __name__ == "__main__":
 
     #Environment Variables
@@ -54,10 +74,10 @@ if __name__ == "__main__":
     path= proj_path + 'matfiles/*'
 
     #Inference Variables
-    LR = 0.05
+    LR = 0.15
     step = 0.05
     training_iter = 10000 
-    lam = 0.35 
+    lam = 0.10 
     orig_patchdim = 512
     rows_range,cols_range = np.meshgrid(np.arange(156,512-156),np.arange(156,512-156),indexing='ij')
     patchdim = np.asarray([0,0])
@@ -66,8 +86,8 @@ if __name__ == "__main__":
     print('patchdim is ---',patchdim)
     batch = 200 
     test_batch = 15
-    basis_no =20
-    matfile_write_path = write_path+'Faces_r_theta_LR_nowhiten_mean_subtr_'+str(LR)+'_batch_'+str(batch)+'_basis_no_'+str(basis_no)+'_lam_'+str(lam)+'_basis'
+    basis_no =15
+    matfile_write_path = write_path+'Faces_r_theta_norm_data_LR_'+str(LR)+'_batch_'+str(batch)+'_basis_no_'+str(basis_no)+'_lam_'+str(lam)+'_basis'
 
     #list all files in the directory above
     print('The path for glob search is', path)
@@ -97,20 +117,12 @@ if __name__ == "__main__":
     #Compute Mean Face
     mean_face = np.mean(shapes,axis=0)
     #Now let's try doing PCA
-    print('Compute Covariance Matrix')
+    print('Subtractign Mean')
     shapes_subtr_mean_face = shapes - mean_face
-    shapes_cov = np.cov(shapes_subtr_mean_face)
-    print('Compute Eigen Vectors')
-    [d,V] = np.linalg.eigh(shapes_cov)
-    fudge = 1e-6 
-    #Scaling variance matrix
-    D = np.diag(1 / np.sqrt(d + fudge))
-    #Whitening matrix
-    W = np.dot(np.dot(V,D),V.T)
-    print('Shape of W ',W.shape)
-    #Whitened Shape
-    shapes_whitened = np.dot(W,shapes_subtr_mean_face)
-    
+    #Whitening the Data
+    shapes_whitened,W = compute_whitening(shapes_subtr_mean_face)
+    #Normalizing(sphering) the data
+    sphered_data = norm_basis(shapes_whitened)
     #Making and Changing directory
     try:
         print('Trying to see if directory exists already')
@@ -127,18 +139,20 @@ if __name__ == "__main__":
 
     #Create object
     lbfgs_sc = sparse_code_gpu.LBFGS_SC(LR=LR,lam=lam,batch=batch,basis_no=basis_no,patchdim=patchdim,savepath=matfile_write_path)
-    #gen_rand_ind = np.random.randint(0,shapes_whitened.shape[0],size=batch)
     #data = shapes_whitened[0:batch,:].T
-    data = shapes_subtr_mean_face[0:batch,:].T
+    data = sphered_data[0:batch,:].T
     lbfgs_sc.load_data(data)
     residual_list=[]
     sparsity_list=[]
     avg_r_error = []
     print('Compiling Inference function locally')
     infer_func_hndl = create_theano_fn(patchdim,lam,basis_no,test_batch)
+    SNR_I_2 = (data**2)
+    SNR_I_2 = 0.5*(SNR_I_2).sum(axis=0)
+    SNR_I_2 = SNR_I_2.mean()
     for ii in np.arange(training_iter):
         
-        if np.mod(ii,5)==0:
+        if np.mod(ii,10)==0:
             print('*****************Adjusting Learning Rate*******************')
             LR = LR * 0.5 
             #step  = step*0.75
@@ -149,17 +163,21 @@ if __name__ == "__main__":
         print('Training iteration -- ',ii)
         #Note this way, each column is a data vector
         tm3 = time.time()
-        active_infer,result = lbfgs_sc.infer_coeff()
+        for jj in np.arange(100):
+            obj,active_infer = lbfgs_sc.infer_coeff_gd()
+            if np.mod(jj,10)==0:
+                print('Value of objective function from previous iteration of coeff update',obj)
         sparsity_list.append(active_infer)
         tm4 = time.time()
-        residual,active=lbfgs_sc.update_basis()
+        residual,active,basis=lbfgs_sc.update_basis()
         residual_list.append(residual)
         tm5 = time.time()
         print('Infer coefficients cost in seconds', tm4-tm3)
         print('The value of active coefficients after we do inference ', active_infer)
-        print('The value of objective function after we do inference ...',result)
         print('The value of residual after we do learning ....', residual)
+        print('The SNR for the model is .........',SNR_I_2/residual)
         print('The value of active coefficients after we do learning ....',active)
+        print('The mean norm of the basis is .....',np.mean(np.linalg.norm(basis,axis=0)))
         print('Updating basis cost in seconds',tm5-tm4)
         #residual_list.append(residual)
         if np.mod(ii,10)==0:
@@ -178,29 +196,5 @@ if __name__ == "__main__":
             }
             scio.savemat('basis',shape_basis)
             print('Saving basis visualizations now')
-            lbfgs_sc.visualize_basis(ii,[4,5])
+            lbfgs_sc.visualize_basis(ii,[3,5])
             print('Visualizations done....back to work now')
-        '''
-        if np.mod(ii,5)==0:
-            print('testing out test error')
-            data = shapes_whitened[batch:,:].T
-	    print('Moving Basis from GPU to CPU')
-            tm1 = time.time()
-            basis = lbfgs_sc.basis.get_value()
-            tm2 = time.time()
-            print('Getting basis costed ', tm2-tm1)
-	    print('Calling Inference')
-	    coeff = infer_coeff(infer_func_hndl,data,basis,basis_no,test_batch)
-            coeff = np.reshape(coeff,[basis_no,test_batch])
-            residual = data - basis.dot(coeff)
-            residual = residual**2
-            residual = np.sqrt(residual.sum(axis=0))
-            r_error = residual.mean()
-            avg_r_error.append(r_error)
-            print('Test Error is',r_error)
-            data = shapes_whitened[0:batch,:].T
-            tm6 = time.time()
-            lbfgs_sc.load_data(data) 
-            tm7 = time.time()
-            print('Time to load back original data is',tm7-tm6)
-         '''

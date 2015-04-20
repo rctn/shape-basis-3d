@@ -43,8 +43,10 @@ class LBFGS_SC:
         self.data = theano.shared(self.data)
         self.basis = theano.shared(self.basis)
         self.residual = [] 
+        self.infer_iter = 100
         print('Compiling theano function')
         self.f = self.create_theano_fn()
+        self.infer_coeff_gd = self.create_infer_coeff_gd()
         self.update_basis = self.create_update_basis()
         return 
 
@@ -73,7 +75,22 @@ class LBFGS_SC:
         print('Number of Active coefficients is ...',active)
         return active,res.fun 
 
+    def create_infer_coeff_gd(self):
+        r_err = (self.data - self.basis.dot(self.coeff))**2
+        r_err = 0.5*r_err.sum(axis=0)
+        r_err = r_err.mean()
+        sparsity = self.lam * T.abs_(self.coeff).sum(axis=0).mean()
+        obj = r_err + sparsity
+        grads = T.grad(obj, self.coeff)
+        coeff_update = self.coeff - self.LR*1e-3*grads
+        updates = {self.coeff:coeff_update.astype('float32')}
+        active = T.abs_(self.coeff).sum().astype('float32')/float(self.basis_no*self.batch)
+        f = theano.function([],[obj.astype('float64'),active.astype('float64')],updates=updates)
+        return f
+
+
     def load_data(self,data):
+        print('The norm of the data is ', np.mean(np.linalg.norm(data,axis=0)))
         #Update self.data to have new data
         self.data.set_value(data.astype('float32'))
         return
@@ -97,13 +114,13 @@ class LBFGS_SC:
         norm_basis = T.sqrt(norm_basis)
         norm_basis = T.nlinalg.diag(1.0/norm_basis)
         basis = basis.dot(norm_basis)
-        updates = {self.basis: basis}
+        updates = {self.basis: basis.astype('float32')}
         tmp = Residual**2
         tmp = 0.5*tmp.sum(axis=0)
         Residual = tmp.mean()
         #grads = T.grad(Residual,basis_flat)
         num_on = T.abs_(self.coeff).sum().astype('float32')/float(self.basis_no*self.batch)
-        f = theano.function([],[Residual.astype('float32'),num_on], updates=updates)
+        f = theano.function([],[Residual.astype('float32'),num_on,basis], updates=updates)
         #f = theano.function([basis_flat],[Residual.astype('float64'),grads.astype('float64')] )
         return f 
 
@@ -129,7 +146,7 @@ class LBFGS_SC:
                 tmp = self.basis.get_value()
                 tmp = tmp[:,ii*ax.shape[1]+jj]
                 im = tmp.reshape([self.patchdim[0],self.patchdim[1]])
-                ax[ii,jj].imshow(im,cmap=cm.Greys_r,interpolation='nearest',aspect='equal')
+                ax[ii,jj].imshow(im,interpolation='nearest',aspect='equal')
                 ax[ii,jj].axis('off')
         savepath_image= '_iterations_' + str(iteration) + '_visualize_.png'
         f.savefig(savepath_image)

@@ -12,6 +12,7 @@ import glob
 import matplotlib
 matplotlib.use('Agg')
 from matplotlib import pyplot as plt
+from matplotlib import cm
 import os
 import ipdb
 import pcd2im
@@ -126,13 +127,40 @@ def load_data():
     mean_face = np.mean(shapes,axis=0)
     return shapes,X,Y, mean_face 
 
+def save_basis(basis,savepath,im_shape=None,fig_shape=None):
+    if im_shape is None:
+        f,ax = plt.subplots(10,5,sharex=True,sharey=True)  
+    else:
+        f,ax = plt.subplots(fig_shape[0],fig_shape[1],sharex=True,sharey=True)
+    
+    for ii in np.arange(ax.shape[0]):
+        for jj in np.arange(ax.shape[1]):
+            print('ii and jj',ii,jj)
+            try:
+                tmp = basis[:,ii*ax.shape[1] + jj]
+            except:
+                print('The value of ii,jj that failed',ii,jj)
+                print(ii*ax.shape[1]+jj)
+                ipdb.set_trace()
+            if im_shape is None:
+                ax[ii,jj].imshow(tmp.reshape([200,200]),interpolation='nearest',aspect='equal')
+            else:
+                ax[ii,jj].imshow(tmp.reshape([im_shape[0],im_shape[1]]),interpolation='nearest',aspect='equal')
+            ax[ii,jj].axis('off')
+    f.savefig(savepath)
+    f.clf()
+    plt.close()
+    return 1
+
 
 if __name__ == "__main__":
 
     shapes, X, Y, mean_face = load_data()
     shape_vals, shape_vecs = my_pca_whole(shapes)
-    r_error = r_error(shapes,shape_vecs)
-    print('The value of r_error is ', r_error)
+    #shape_vals, shape_vecs = sklearn_pca(shapes)
+    save_basis(basis=shape_vecs,savepath='/media/mudigonda/Gondor/Data/3dFace/shape_basis/PCA/r_theta_eig_basis.png')
+    #r_error = r_error(shapes,shape_vecs)
+    #print('The value of r_error is ', r_error)
     #shape_vals, shape_vecs = sklearn_pca(shapes)
 
     print("saving Basis")

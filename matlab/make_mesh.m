@@ -55,21 +55,36 @@ catch
 end
 
 reshaped_mean = reshape(mean_face,shape1,shape2);
+%Save Mean Face separately
+radii = zeros(512,512);
+radii(156:355,156:355) = reshaped_mean';
+vertices_padded = cybconvert(radii);
+vertices_cropped = zeros(shape1,shape2,3);
+vertices_cropped(:,:,1) = vertices_padded(156:355,156:355,1);
+vertices_cropped(:,:,2) = vertices_padded(156:355,156:355,2);
+vertices_cropped(:,:,3) = vertices_padded(156:355,156:355,3);    
+[faces,vertices] = surf2patch(vertices_cropped(:,:,1),vertices_cropped(:,:,2),vertices_cropped(:,:,3),'triangle');
+save('Mean_Face','faces','vertices');
+
 for ii=1:no_basis
 	sprintf('The value of ii is --%d',ii)
 	if PCA_SPARSE == 0
 		Z = reshape(sparse_shape_basis(:,ii),shape1,shape2);
 	else
 		Z = reshape(shape_eig_vectors_face(:,ii),shape1,shape2);
-		Z = Z * 1e9;
+		Z = Z * 1e12;
 		if add_mean==1
 			Z = Z + reshaped_mean;
 		end
 		radii = zeros(512,512);
 		radii(156:355,156:355) = Z';
-		vertices = cybconvert(radii);
-	end
-	[faces,vertices] = surf2patch(vertices(:,:,1),vertices(:,:,2),vertices(:,:,3),'triangle');
+		vertices_padded = cybconvert(radii);
+    end
+    vertices_cropped = zeros(shape1,shape2,3);
+    vertices_cropped(:,:,1) = vertices_padded(156:355,156:355,1);
+    vertices_cropped(:,:,2) = vertices_padded(156:355,156:355,2);
+    vertices_cropped(:,:,3) = vertices_padded(156:355,156:355,3);    
+	[faces,vertices] = surf2patch(vertices_cropped(:,:,1),vertices_cropped(:,:,2),vertices_cropped(:,:,3),'triangle');
 	save(strcat('Sparse_basis_',int2str(ii)),'faces','vertices');
 end
 
